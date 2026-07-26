@@ -1,0 +1,5 @@
+beautifulsoup4>=4.12,<5
+sentence-transformers>=3,<6
+faiss-cpu>=1.8,<2
+numpy>=1.26,<3
+rank-bm25>=0.2.2,<1

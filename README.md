@@ -3,3 +3,4 @@
 
 - `HW_1` — підготовка knowledge base, нормалізація та chunking;
 - `HW_2` — multilingual embeddings, FAISS і top-k semantic retrieval.
+- `HW_3` — metadata filtering, BM25, BGE/Qwen3-4B reranking і evaluation.
