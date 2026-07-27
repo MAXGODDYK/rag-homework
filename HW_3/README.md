@@ -90,6 +90,7 @@ HW_3/
 │   ├── baseline_retrieval_examples.md
 │   ├── retrieval_comparison.md
 │   ├── retrieval_evaluation.json
+│   ├── retrieval_top1_comparison.md
 │   └── retrieval_examples.md
 ├── scripts/
 │   ├── build_index.py
@@ -214,7 +215,9 @@ Evaluation також окремо підтверджує, що metadata filteri
 
 Повний per-query ranking та аналіз помилок:
 `outputs/retrieval_comparison.md`. Машиночитані результати:
-`outputs/retrieval_evaluation.json`.
+`outputs/retrieval_evaluation.json`. Коротка таблиця у форматі
+завдання `baseline top-1 vs improved top-1`:
+`outputs/retrieval_top1_comparison.md`.
 
 ## Обмеження
 
