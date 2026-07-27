@@ -182,3 +182,8 @@ cython_debug/
 
 # Local files that must not be committed
 /тест_не_идёт_в_git/
+
+# HW4 private configuration and runtime state
+/HW_4/local_config/constants.py
+/HW_4/local_state/
+/HW_4/.venv/
