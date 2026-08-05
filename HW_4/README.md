@@ -248,6 +248,10 @@ FreeModel adapter додано й перевірено unit-тестами та 
 `outputs/rag_evaluation.json`. Розвиток prompt:
 `outputs/prompt_improvements.md`.
 
+Коротке пояснення реалізації для перевірки знаходиться у
+`LECTURER_NOTES.md`, а результати ручного запуску Telegram-бота —
+в `outputs/telegram_bot_live_test.md`.
+
 ## Fine-tuning repository
 
 QLoRA-код, 80 reviewed SFT-прикладів і фінальний LoRA adapter
