@@ -1,5 +1,12 @@
 # Пояснення до домашнього завдання №4
 
+## Посилання
+
+- HW4: https://github.com/MAXGODDYK/rag-homework/tree/HW_4/HW_4
+- Pull request: https://github.com/MAXGODDYK/rag-homework/pull/1
+- QLoRA repository:
+  https://github.com/MAXGODDYK/qwen3-grounded-rag-finetuning
+
 ## Що я реалізував
 
 У HW4 я продовжив retrieval pipeline з попередніх робіт і додав
@@ -125,4 +132,3 @@ rate limit і `/reset`. Ключі, питання користувачів та
 - FreeModel є стороннім gateway і може мати тимчасові server errors;
 - local Qwen потребує NVIDIA GPU та CUDA;
 - історія діалогу свідомо не використовується.
-

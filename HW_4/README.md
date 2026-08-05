@@ -258,6 +258,12 @@ QLoRA-код, 80 reviewed SFT-прикладів і фінальний LoRA adap
 знаходяться в окремому локальному репозиторії:
 
 ```text
+https://github.com/MAXGODDYK/qwen3-grounded-rag-finetuning
+```
+
+Локальний checkout:
+
+```text
 C:\Все мои проэкты\qwen3-grounded-rag-finetuning
 ```
 
