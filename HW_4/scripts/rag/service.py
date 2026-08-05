@@ -7,6 +7,7 @@ from config.settings import Settings, load_settings
 
 from .prompt_builder import build_grounded_prompt, build_repair_prompt
 from .providers import (
+    FreeModelProvider,
     LocalQwenProvider,
     OpenAIProvider,
     ProviderError,
@@ -34,6 +35,7 @@ class RagAnswerService:
         self.retriever = retriever or GroundedRetriever()
         self.providers: dict[str, TextProvider] = providers or {
             "openai": OpenAIProvider(self.settings),
+            "freemodel": FreeModelProvider(self.settings),
             "local": LocalQwenProvider(self.settings),
         }
 
@@ -110,6 +112,7 @@ class RagAnswerService:
         top_k: int | None = None,
         candidate_k: int | None = None,
         source_file: str | None = None,
+        allow_local_fallback: bool = True,
     ) -> RagAnswer:
         started_at = perf_counter()
         question = question.strip()
@@ -183,7 +186,10 @@ class RagAnswerService:
                 fallback,
             )
         except ProviderError as first_error:
-            if provider_name != "openai":
+            if (
+                provider_name not in {"openai", "freemodel"}
+                or not allow_local_fallback
+            ):
                 raise
 
             local_provider = self.providers["local"]
@@ -201,7 +207,8 @@ class RagAnswerService:
             )
             actual_provider_name = "local"
             notice = (
-                "OpenAI недоступний; відповідь створено локальною Qwen."
+                f"{provider_name} недоступний; відповідь створено "
+                "локальною Qwen."
             )
         except GeneratedPayloadError:
             return self._fallback_result(

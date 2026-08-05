@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("question", help="Питання користувача")
     parser.add_argument(
         "--provider",
-        choices=("openai", "local"),
+        choices=("openai", "freemodel", "local"),
         default="openai",
     )
     parser.add_argument("--top-k", type=int, default=3)

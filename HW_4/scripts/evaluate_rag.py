@@ -122,8 +122,8 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         )
     lines.append("")
     lines.append(
-        "OpenAI-результати не вигадуються: якщо ключ не налаштовано, "
-        "вони позначаються як `skipped`."
+        "Результати зовнішніх provider не вигадуються: якщо ключ не "
+        "налаштовано, запуск позначається як `skipped`."
     )
 
     for item in report["results"]:
@@ -154,6 +154,12 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
                     if item["citations"]
                     else "немає"
                 ),
+            ]
+        )
+        if item.get("notice"):
+            lines.append(f"- Notice: {item['notice']}")
+        lines.extend(
+            [
                 "",
                 f"**Відповідь:** {item['answer']}",
                 "",
@@ -195,8 +201,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--providers",
         nargs="+",
-        choices=("openai", "local"),
-        default=("openai", "local"),
+        choices=("openai", "freemodel", "local"),
+        default=("openai", "freemodel", "local"),
     )
     parser.add_argument(
         "--json-output",
@@ -245,6 +251,7 @@ def main() -> None:
                     provider_name=provider_name,
                     top_k=3,
                     candidate_k=10,
+                    allow_local_fallback=False,
                 )
             except Exception as error:
                 results.append(

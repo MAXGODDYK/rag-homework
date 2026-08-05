@@ -23,6 +23,7 @@ class FakeService:
     def provider_status(self):
         return {
             "openai": {"available": True, "reason": "test"},
+            "freemodel": {"available": True, "reason": "test"},
             "local": {"available": True, "reason": "test"},
         }
 
@@ -59,6 +60,16 @@ def test_provider_switch_and_reset() -> None:
 
     assert handler_context.user_data["provider"] == "openai"
     assert "last_result" not in handler_context.user_data
+
+
+def test_freemodel_provider_switch() -> None:
+    message = FakeMessage()
+    handler_context = context(["freemodel"])
+
+    asyncio.run(provider_command(update(message), handler_context))
+
+    assert handler_context.user_data["provider"] == "freemodel"
+    assert "freemodel" in message.replies[-1]
 
 
 def test_sources_lists_last_retrieved_chunks() -> None:

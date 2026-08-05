@@ -126,3 +126,52 @@ def test_openai_error_uses_local_provider() -> None:
     assert result.provider == "local"
     assert result.notice is not None
     assert local.calls == 1
+
+
+def test_freemodel_error_uses_local_provider() -> None:
+    local = FakeProvider([valid_output()], "local")
+    failing = FailingProvider()
+    failing.name = "freemodel"
+    service = RagAnswerService(
+        settings=settings(),
+        retriever=FakeRetriever(),
+        providers={
+            "freemodel": failing,
+            "local": local,
+        },
+    )
+
+    result = service.answer(
+        "Should I take breaks?",
+        provider_name="freemodel",
+    )
+
+    assert result.provider == "local"
+    assert result.notice is not None
+    assert "freemodel" in result.notice
+    assert local.calls == 1
+
+
+def test_evaluation_can_disable_local_provider_fallback() -> None:
+    local = FakeProvider([valid_output()], "local")
+    service = RagAnswerService(
+        settings=settings(),
+        retriever=FakeRetriever(),
+        providers={
+            "freemodel": FailingProvider(),
+            "local": local,
+        },
+    )
+
+    try:
+        service.answer(
+            "Should I take breaks?",
+            provider_name="freemodel",
+            allow_local_fallback=False,
+        )
+    except ProviderGenerationError:
+        pass
+    else:
+        raise AssertionError("Provider error must not be hidden")
+
+    assert local.calls == 0

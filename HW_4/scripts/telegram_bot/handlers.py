@@ -63,6 +63,7 @@ async def help_command(
         "Приклад:\n"
         "Як скласти реалістичний план підготовки до іспиту?\n\n"
         "/provider openai — OpenAI gpt-4.1-mini\n"
+        "/provider freemodel — FreeModel OpenAI-compatible API\n"
         "/provider local — fine-tuned Qwen3-4B\n"
         "/status — стан моделей і лімітів\n"
         "/sources — chunks останньої відповіді\n"
@@ -83,22 +84,23 @@ async def provider_command(
         )
         await update.effective_message.reply_text(
             f"Поточний provider: {current}\n"
-            "Використання: /provider openai або /provider local"
+            "Використання: /provider openai, freemodel або local"
         )
         return
 
     provider_name = context.args[0].lower()
-    if provider_name not in {"openai", "local"}:
+    if provider_name not in {"openai", "freemodel", "local"}:
         await update.effective_message.reply_text(
-            "Provider повинен бути openai або local."
+            "Provider повинен бути openai, freemodel або local."
         )
         return
 
-    if provider_name == "local":
-        status = service.provider_status()["local"]
+    if provider_name in {"freemodel", "local"}:
+        status = service.provider_status()[provider_name]
         if not status["available"]:
             await update.effective_message.reply_text(
-                f"Local provider недоступний: {status['reason']}"
+                f"{provider_name} provider недоступний: "
+                f"{status['reason']}"
             )
             return
 
@@ -118,7 +120,10 @@ async def status_command(
         DEFAULT_PROVIDER,
     )
     statuses = service.provider_status()
-    used, maximum = limiter.openai_daily_usage()
+    openai_used, openai_maximum = limiter.openai_daily_usage()
+    freemodel_used, freemodel_maximum = (
+        limiter.freemodel_daily_usage()
+    )
 
     lines = [
         f"Поточний provider: {provider_name}",
@@ -131,6 +136,17 @@ async def status_command(
             )
         ),
         (
+            "FreeModel: "
+            + (
+                "available"
+                if statuses["freemodel"]["available"]
+                else (
+                    "unavailable — "
+                    f"{statuses['freemodel']['reason']}"
+                )
+            )
+        ),
+        (
             "Local: "
             + (
                 "available"
@@ -138,7 +154,11 @@ async def status_command(
                 else f"unavailable — {statuses['local']['reason']}"
             )
         ),
-        f"OpenAI requests today: {used}/{maximum}",
+        f"OpenAI requests today: {openai_used}/{openai_maximum}",
+        (
+            "FreeModel requests today: "
+            f"{freemodel_used}/{freemodel_maximum}"
+        ),
     ]
     await update.effective_message.reply_text("\n".join(lines))
 
@@ -208,10 +228,11 @@ async def question_handler(
     decision = limiter.check_and_record(user.id, provider_name)
     if not decision.allowed:
         if (
-            provider_name == "openai"
+            provider_name in {"openai", "freemodel"}
             and "денний ліміт" in decision.reason
             and service.provider_status()["local"]["available"]
         ):
+            exhausted_provider = provider_name
             provider_name = "local"
             second_decision = limiter.check_and_record(
                 user.id,
@@ -221,7 +242,8 @@ async def question_handler(
                 await message.reply_text(second_decision.reason)
                 return
             await message.reply_text(
-                "Денний ліміт OpenAI вичерпано; використовую local Qwen."
+                f"Денний ліміт {exhausted_provider} вичерпано; "
+                "використовую local Qwen."
             )
         else:
             await message.reply_text(decision.reason)

@@ -19,7 +19,10 @@ class Settings:
     openai_api_key: str
     hf_token: str
     local_adapter_path: Path | None
+    freemodel_api_key: str = ""
     openai_model: str = "gpt-4.1-mini"
+    freemodel_base_url: str = "https://api.freemodel.dev/v1"
+    freemodel_model: str = "auto"
     local_model_name: str = "Qwen/Qwen3-4B-Instruct-2507"
     embedding_model_name: str = (
         "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -29,9 +32,11 @@ class Settings:
     default_candidate_k: int = 10
     minimum_reranker_raw_score: float = 0.005
     maximum_question_length: int = 1000
+    telegram_network_timeout_seconds: float = 30.0
     per_user_request_limit: int = 5
     per_user_window_seconds: int = 600
     openai_daily_request_limit: int = 100
+    freemodel_daily_request_limit: int = 100
     maximum_answer_tokens: int = 384
 
 
@@ -82,10 +87,21 @@ def load_settings() -> Settings:
             if adapter_value
             else None
         ),
+        freemodel_api_key=_value("FREEMODEL_API_KEY", constants),
         openai_model=_value(
             "OPENAI_MODEL",
             constants,
             "gpt-4.1-mini",
+        ),
+        freemodel_base_url=_value(
+            "FREEMODEL_BASE_URL",
+            constants,
+            "https://api.freemodel.dev/v1",
+        ),
+        freemodel_model=_value(
+            "FREEMODEL_MODEL",
+            constants,
+            "auto",
         ),
         local_model_name=_value(
             "LOCAL_MODEL_NAME",

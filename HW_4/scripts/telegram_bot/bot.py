@@ -38,9 +38,14 @@ def build_application():
             "TELEGRAM_BOT_TOKEN не налаштовано в ENV/.env/constants.py"
         )
 
+    timeout = settings.telegram_network_timeout_seconds
     application = (
         ApplicationBuilder()
         .token(settings.telegram_bot_token)
+        .connect_timeout(timeout)
+        .read_timeout(timeout)
+        .write_timeout(timeout)
+        .pool_timeout(timeout)
         .build()
     )
     application.bot_data["rag_service"] = RagAnswerService(
@@ -51,6 +56,7 @@ def build_application():
         per_user_limit=settings.per_user_request_limit,
         window_seconds=settings.per_user_window_seconds,
         openai_daily_limit=settings.openai_daily_request_limit,
+        freemodel_daily_limit=settings.freemodel_daily_request_limit,
     )
 
     application.add_handler(CommandHandler("start", start_command))

@@ -75,6 +75,62 @@ class OpenAIProvider:
         return output_text.strip()
 
 
+class FreeModelProvider:
+    name = "freemodel"
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+        self._client = None
+
+    def availability(self) -> tuple[bool, str]:
+        if not self.settings.freemodel_api_key:
+            return False, "FREEMODEL_API_KEY не налаштовано"
+        return True, (
+            f"model={self.settings.freemodel_model}; "
+            f"base_url={self.settings.freemodel_base_url}"
+        )
+
+    def _get_client(self):
+        available, reason = self.availability()
+        if not available:
+            raise ProviderUnavailableError(reason)
+        if self._client is None:
+            from openai import OpenAI
+
+            self._client = OpenAI(
+                api_key=self.settings.freemodel_api_key,
+                base_url=self.settings.freemodel_base_url,
+            )
+        return self._client
+
+    def generate(self, prompt: str) -> str:
+        try:
+            response = self._get_client().chat.completions.create(
+                model=self.settings.freemodel_model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=self.settings.maximum_answer_tokens,
+            )
+        except ProviderUnavailableError:
+            raise
+        except Exception as error:
+            raise ProviderGenerationError(
+                "FreeModel generation failed: "
+                f"{type(error).__name__}"
+            ) from error
+
+        choices = getattr(response, "choices", ())
+        output_text = (
+            getattr(choices[0].message, "content", "")
+            if choices
+            else ""
+        )
+        if not output_text or not output_text.strip():
+            raise ProviderGenerationError(
+                "FreeModel повернув порожній message content"
+            )
+        return output_text.strip()
+
+
 class LocalQwenProvider:
     name = "local"
 
