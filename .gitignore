@@ -187,3 +187,8 @@ cython_debug/
 /HW_4/local_config/constants.py
 /HW_4/local_state/
 /HW_4/.venv/
+
+# HW5 private configuration and runtime state
+/HW_5/local_config/constants.py
+/HW_5/local_state/
+/HW_5/.venv/

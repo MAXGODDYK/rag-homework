@@ -6,3 +6,5 @@
 - `HW_3` — metadata filtering, BM25, BGE/Qwen3-4B reranking і evaluation.
 - `HW_4` — grounded RAG, confidence fallback, OpenAI/FreeModel/local
   Qwen, Telegram-бот і перевірка JSON/citations.
+- `HW_5` — allowlisted external tool офіційного курсу НБУ,
+  LLM-routing, deterministic answers і Telegram `/rate`.
