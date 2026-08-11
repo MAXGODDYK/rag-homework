@@ -188,7 +188,10 @@ cython_debug/
 /HW_4/local_state/
 /HW_4/.venv/
 
-# HW5 private configuration and runtime state
-/HW_5/local_config/constants.py
-/HW_5/local_state/
-/HW_5/.venv/
+# JARVIS private configuration and runtime state
+/JARVIS/local_config/constants.py
+/JARVIS/local_state/
+/JARVIS/.venv/
+/JARVIS/desktop/node_modules/
+/JARVIS/desktop/dist/
+/JARVIS/desktop/src-tauri/target/
