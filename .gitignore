@@ -191,7 +191,18 @@ cython_debug/
 # JARVIS private configuration and runtime state
 /JARVIS/local_config/constants.py
 /JARVIS/local_state/
+/JARVIS/jarvis/local_state/
 /JARVIS/.venv/
 /JARVIS/desktop/node_modules/
 /JARVIS/desktop/dist/
+/JARVIS/desktop/*.tsbuildinfo
+/JARVIS/desktop/vite.config.js
+/JARVIS/desktop/vite.config.d.ts
 /JARVIS/desktop/src-tauri/target/
+/JARVIS/desktop/src-tauri/gen/
+/JARVIS/desktop/src-tauri/binaries/*.exe
+/JARVIS/desktop/src-tauri/icons/android/
+/JARVIS/desktop/src-tauri/icons/ios/
+/JARVIS/build/
+/JARVIS/dist/
+/JARVIS/*.spec

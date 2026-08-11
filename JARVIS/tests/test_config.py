@@ -25,9 +25,10 @@ def test_local_constants_are_used_when_environment_is_absent(
     tmp_path: Path,
 ) -> None:
     constants_path = tmp_path / "constants.py"
+    freemodel_key_name = "FREEMODEL_API_KEY"
     constants_path.write_text(
         'OPENAI_API_KEY = "local-key"\n'
-        'FREEMODEL_API_KEY = "freemodel-local-key"\n'
+        f'{freemodel_key_name} = "freemodel-local-key"\n'
         'LOCAL_ADAPTER_PATH = r"C:\\\\adapter"\n',
         encoding="utf-8",
     )
