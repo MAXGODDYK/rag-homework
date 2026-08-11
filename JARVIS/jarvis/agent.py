@@ -8,7 +8,12 @@ from threading import RLock
 from typing import Any
 
 from config.settings import Settings, load_settings
-from scripts.rag.providers import ProviderError, TextProvider, build_text_providers
+from scripts.rag.providers import (
+    LocalQwenProvider,
+    ProviderError,
+    TextProvider,
+    build_text_providers,
+)
 
 from .approvals import ApprovalManager
 from .config import JarvisConfig
@@ -82,21 +87,41 @@ class AgentService:
         self.retriever = retriever
         self.policies = policies
         self.legacy_settings = legacy_settings or load_settings()
-        self.providers = providers or build_text_providers(self.legacy_settings)
+        if providers is None:
+            self.providers = build_text_providers(self.legacy_settings)
+            self.providers["local-agent"] = LocalQwenProvider(
+                self.legacy_settings,
+                use_adapter=False,
+                provider_name="local-agent",
+            )
+        else:
+            self.providers = providers
         self.pending: dict[str, PendingAgentAction] = {}
         self.pending_codes: dict[str, str] = {}
         self._lock = RLock()
 
+    def reload_providers(self) -> None:
+        """Reload local provider credentials without exposing or restarting models."""
+        self.legacy_settings = load_settings()
+        self.providers = build_text_providers(self.legacy_settings)
+        self.providers["local-agent"] = LocalQwenProvider(
+            self.legacy_settings,
+            use_adapter=False,
+            provider_name="local-agent",
+        )
+
     def _provider(self, profile: str, question: str) -> tuple[str, TextProvider]:
-        if profile == "local-agent" or profile == "local-grounded":
+        if profile == "local-agent":
+            order = ["local-agent", "local"]
+        elif profile == "local-grounded":
             order = ["local"]
         elif profile == "remote-strong":
-            order = ["openai", "freemodel", "local"]
+            order = ["openai", "freemodel", "local-agent", "local"]
         else:
             complex_request = len(question) > 1200 or bool(
                 re.search(r"\b(refactor|architecture|repository|debug|implement|проєкт|проект|код)\b", question, re.I)
             )
-            order = ["openai", "freemodel", "local"] if complex_request else ["local", "freemodel", "openai"]
+            order = ["openai", "freemodel", "local-agent", "local"] if complex_request else ["freemodel", "openai", "local-agent", "local"]
         reasons: list[str] = []
         for name in order:
             provider = self.providers.get(name)
@@ -132,7 +157,21 @@ class AgentService:
         retrieved: list[dict],
         history: list[dict[str, Any]],
     ) -> str:
-        tools = [tool for tool in self.registry.catalog() if tool["available"]]
+        available_tools = [
+            tool for tool in self.registry.catalog() if tool["available"]
+        ]
+        terms = set(re.findall(r"[\w-]{3,}", question.casefold()))
+
+        def relevance(tool: dict[str, Any]) -> tuple[int, str]:
+            searchable = f"{tool['name']} {tool['description']}".casefold()
+            score = sum(term in searchable for term in terms)
+            return score, tool["name"]
+
+        ranked_tools = sorted(
+            available_tools,
+            key=lambda tool: (-relevance(tool)[0], relevance(tool)[1]),
+        )
+        tools = ranked_tools[:8]
         contexts = [
             {
                 "chunk_id": row["id"],
@@ -189,10 +228,35 @@ class AgentService:
             question,
             user_id=session["user_id"],
             project_id=session.get("project_id"),
+            source_selector=policy.source_selector,
             top_k=5,
             candidate_k=20,
         ) if session.get("project_id") else []
         provider_name, provider = self._provider(policy.provider_profile, question)
+        history: list[dict[str, Any]] = []
+        tool_run_ids: list[str] = []
+        math_intent = bool(
+            re.search(r"\b(calculate|compute|обчисли|порахуй|посчитай)\b", question, re.I)
+        ) or bool(re.fullmatch(r"[\d\s()+\-*/%.]+", question))
+        if math_intent:
+            expressions = [
+                value.strip()
+                for value in re.findall(r"[\d\s()+\-*/%.]{3,}", question)
+                if re.search(r"[+\-*/%]", value)
+            ]
+            if expressions:
+                outcome = self.runner.propose(
+                    "calculator", {"expression": max(expressions, key=len)}, context
+                )
+                tool_run_ids.append(outcome.tool_run_id)
+                if outcome.result is not None:
+                    history.append(
+                        {
+                            "tool_name": "calculator",
+                            "tool_run_id": outcome.tool_run_id,
+                            "result": outcome.result.model_dump(mode="json"),
+                        }
+                    )
         return self._run_loop(
             session=session,
             question=question,
@@ -200,8 +264,8 @@ class AgentService:
             rows=rows,
             provider_name=provider_name,
             provider=provider,
-            history=[],
-            tool_run_ids=[],
+            history=history,
+            tool_run_ids=tool_run_ids,
         )
 
     def _run_loop(

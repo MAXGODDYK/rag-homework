@@ -134,8 +134,16 @@ class FreeModelProvider:
 class LocalQwenProvider:
     name = "local"
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        use_adapter: bool = True,
+        provider_name: str = "local",
+    ) -> None:
         self.settings = settings
+        self.use_adapter = use_adapter
+        self.name = provider_name
         self._tokenizer = None
         self._model = None
         self._load_lock = Lock()
@@ -143,10 +151,11 @@ class LocalQwenProvider:
 
     def availability(self) -> tuple[bool, str]:
         adapter_path = self.settings.local_adapter_path
-        if adapter_path is None:
-            return False, "LOCAL_ADAPTER_PATH не налаштовано"
-        if not adapter_path.exists():
-            return False, f"LoRA adapter не знайдено: {adapter_path}"
+        if self.use_adapter:
+            if adapter_path is None:
+                return False, "LOCAL_ADAPTER_PATH не налаштовано"
+            if not adapter_path.exists():
+                return False, f"LoRA adapter не знайдено: {adapter_path}"
 
         try:
             import torch
@@ -156,10 +165,8 @@ class LocalQwenProvider:
         if not torch.cuda.is_available():
             return False, "CUDA-enabled PyTorch недоступний"
 
-        return True, (
-            f"model={self.settings.local_model_name}; "
-            f"adapter={adapter_path}"
-        )
+        suffix = f"; adapter={adapter_path}" if self.use_adapter else "; base planning model"
+        return True, f"model={self.settings.local_model_name}{suffix}"
 
     def _load(self) -> None:
         if self._model is not None:
@@ -174,7 +181,6 @@ class LocalQwenProvider:
                 raise ProviderUnavailableError(reason)
 
             import torch
-            from peft import PeftModel
             from transformers import (
                 AutoModelForCausalLM,
                 AutoTokenizer,
@@ -199,10 +205,15 @@ class LocalQwenProvider:
                 quantization_config=quantization_config,
                 dtype=torch.bfloat16,
             )
-            model = PeftModel.from_pretrained(
-                base_model,
-                str(self.settings.local_adapter_path),
-            )
+            if self.use_adapter:
+                from peft import PeftModel
+
+                model = PeftModel.from_pretrained(
+                    base_model,
+                    str(self.settings.local_adapter_path),
+                )
+            else:
+                model = base_model
             model.eval()
             self._tokenizer = tokenizer
             self._model = model

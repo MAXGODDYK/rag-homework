@@ -24,8 +24,10 @@ JARVIS_ALLOWED_ROOTS = r"C:\path\to\project-one;C:\path\to\project-two"
 WEB_SEARCH_API_KEY = ""
 GOOGLE_CLIENT_ID = ""
 GOOGLE_CLIENT_SECRET = ""
+GOOGLE_ACCESS_TOKEN = ""
 MICROSOFT_CLIENT_ID = ""
 MICROSOFT_TENANT_ID = "common"
+MICROSOFT_ACCESS_TOKEN = ""
 
 # Configurable local quotas.
 JARVIS_MAX_UPLOAD_MB = 100

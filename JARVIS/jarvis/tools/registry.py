@@ -44,6 +44,21 @@ from jarvis.tools.system import (
 from scripts.tools.nbu_exchange import NbuExchangeRateTool
 from scripts.tools.orchestrator import build_exchange_rate_answer
 from scripts.tools.schemas import ExchangeRateInput
+from jarvis.tools.integrations import (
+    BrowserInput,
+    WebSearchInput,
+    WindowsAutomationInput,
+    WorkspaceIntegrationInput,
+    browser_automation,
+    browser_available,
+    browser_risk,
+    google_workspace_handler,
+    microsoft_workspace_handler,
+    web_search_handler,
+    windows_automation,
+    windows_risk,
+    workspace_risk,
+)
 
 
 def _nbu(value: ExchangeRateInput, _: ToolContext) -> ToolResult:
@@ -91,25 +106,9 @@ def build_default_registry(config: JarvisConfig | None = None) -> ToolRegistry:
         registry.register(registration)
 
     jarvis_config = config or load_jarvis_config()
-    integrations = [
-        ("web_search", bool(jarvis_config.web_search_api_key)),
-        ("google_email_calendar", bool(jarvis_config.google_client_id and jarvis_config.google_client_secret)),
-        ("microsoft_email_calendar", bool(jarvis_config.microsoft_client_id)),
-        ("browser_automation", False),
-        ("windows_ui_automation", False),
-    ]
-    for name, enabled in integrations:
-        registry.register(
-            ToolSpec(
-                name=name,
-                description=f"Optional {name.replace('_', ' ')} integration.",
-                input_model=IntegrationInput,
-                risk=RiskLevel.EXTERNAL_MUTATION,
-                handler=_disabled(name),
-                availability=lambda enabled=False, name=name: (
-                    enabled,
-                    f"{name} adapter is not enabled in this build",
-                ),
-            )
-        )
+    registry.register(ToolSpec(name="web_search", description="Search the public web through the configured Tavily adapter.", input_model=WebSearchInput, risk=RiskLevel.READ, handler=web_search_handler(jarvis_config), availability=lambda: (bool(jarvis_config.web_search_api_key), "configured" if jarvis_config.web_search_api_key else "WEB_SEARCH_API_KEY is not configured")))
+    registry.register(ToolSpec(name="google_email_calendar", description="Read mail/calendar or create drafts/events through Google Workspace OAuth.", input_model=WorkspaceIntegrationInput, risk=RiskLevel.EXTERNAL_MUTATION, risk_resolver=workspace_risk, handler=google_workspace_handler(jarvis_config), availability=lambda: (bool(jarvis_config.google_access_token), "configured" if jarvis_config.google_access_token else "GOOGLE_ACCESS_TOKEN is not configured")))
+    registry.register(ToolSpec(name="microsoft_email_calendar", description="Read mail/calendar or create drafts/events through Microsoft Graph OAuth.", input_model=WorkspaceIntegrationInput, risk=RiskLevel.EXTERNAL_MUTATION, risk_resolver=workspace_risk, handler=microsoft_workspace_handler(jarvis_config), availability=lambda: (bool(jarvis_config.microsoft_access_token), "configured" if jarvis_config.microsoft_access_token else "MICROSOFT_ACCESS_TOKEN is not configured")))
+    registry.register(ToolSpec(name="browser_automation", description="Controlled headless navigation for explicit public URLs and screenshots.", input_model=BrowserInput, risk=RiskLevel.READ, risk_resolver=browser_risk, handler=browser_automation, availability=browser_available, timeout_seconds=60))
+    registry.register(ToolSpec(name="windows_ui_automation", description="List or focus visible Windows application windows.", input_model=WindowsAutomationInput, risk=RiskLevel.EXTERNAL_MUTATION, risk_resolver=windows_risk, handler=windows_automation, availability=lambda: (__import__("os").name == "nt", "Windows UI Automation available" if __import__("os").name == "nt" else "Windows only")))
     return registry

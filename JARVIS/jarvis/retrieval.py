@@ -50,6 +50,7 @@ class DynamicRetriever:
         *,
         user_id: str,
         project_id: str | None,
+        source_selector: str = "auto",
         top_k: int = 5,
         candidate_k: int = 20,
         rerank: bool = True,
@@ -58,23 +59,37 @@ class DynamicRetriever:
         fts = _fts_query(question)
         if fts:
             try:
-                lexical = self.database.query_all(
-                    """
-                    SELECT chunk_id, bm25(chunks_fts) AS score
-                    FROM chunks_fts
-                    WHERE chunks_fts MATCH ? AND user_id=? AND project_id=?
-                    ORDER BY score LIMIT ?
-                    """,
-                    (fts, user_id, project_id or "", candidate_k),
-                )
+                if source_selector == "all":
+                    lexical = self.database.query_all(
+                        "SELECT chunk_id,bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH ? AND user_id=? ORDER BY score LIMIT ?",
+                        (fts, user_id, candidate_k),
+                    )
+                else:
+                    lexical = self.database.query_all(
+                        "SELECT chunk_id,bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH ? AND user_id=? AND project_id=? ORDER BY score LIMIT ?",
+                        (fts, user_id, project_id or "", candidate_k),
+                    )
             except Exception:
                 lexical = []
             for rank, row in enumerate(lexical, start=1):
                 ranks[row["chunk_id"]] += 1 / (60 + rank)
 
-        vector = VectorIndex(self._project_root(user_id, project_id) / "index", self.embedding_model)
-        for rank, (chunk_id, _score) in enumerate(vector.search(question, candidate_k), start=1):
-            ranks[chunk_id] += 1 / (60 + rank)
+        semantic_projects = [project_id]
+        if source_selector == "all":
+            semantic_projects = [
+                row["id"] for row in self.database.query_all(
+                    "SELECT id FROM projects WHERE user_id=?", (user_id,)
+                )
+            ]
+        for semantic_project in semantic_projects:
+            vector = VectorIndex(
+                self._project_root(user_id, semantic_project) / "index",
+                self.embedding_model,
+            )
+            for rank, (chunk_id, _score) in enumerate(
+                vector.search(question, candidate_k), start=1
+            ):
+                ranks[chunk_id] += 1 / (60 + rank)
 
         terms = re.findall(r"[A-Za-z_$][\w$]{2,}", question)[:20]
         if project_id and terms:
@@ -95,14 +110,18 @@ class DynamicRetriever:
         if not candidate_ids:
             return []
         placeholders = ",".join("?" for _ in candidate_ids)
+        scope_clause = "c.user_id=?" if source_selector == "all" else "c.user_id=? AND c.project_id IS ?"
+        parameters = (*candidate_ids, user_id) if source_selector == "all" else (*candidate_ids, user_id, project_id)
         rows = self.database.query_all(
-            f"""
-            SELECT c.*, d.display_name, d.relative_path, d.media_type
-            FROM chunks c JOIN documents d ON d.id=c.document_id
-            WHERE c.id IN ({placeholders}) AND c.user_id=? AND c.project_id IS ?
-            """,
-            (*candidate_ids, user_id, project_id),
+            f"SELECT c.*,d.display_name,d.relative_path,d.media_type FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.id IN ({placeholders}) AND {scope_clause}",
+            parameters,
         )
+        if source_selector not in {"auto", "all"}:
+            rows = [
+                row for row in rows
+                if row["relative_path"].casefold() == source_selector.casefold()
+                or row["display_name"].casefold() == source_selector.casefold()
+            ]
         by_id = {row["id"]: row for row in rows}
         ordered = [by_id[chunk_id] for chunk_id in candidate_ids if chunk_id in by_id]
         if rerank and ordered:

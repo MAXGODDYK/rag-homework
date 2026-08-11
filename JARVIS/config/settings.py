@@ -9,7 +9,9 @@ from types import ModuleType
 from dotenv import load_dotenv
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(
+    os.getenv("JARVIS_CONFIG_ROOT", str(Path(__file__).resolve().parents[1]))
+).expanduser().resolve()
 LOCAL_CONSTANTS_PATH = PROJECT_ROOT / "local_config" / "constants.py"
 
 

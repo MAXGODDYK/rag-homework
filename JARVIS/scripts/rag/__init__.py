@@ -1,6 +1,5 @@
-"""Reusable grounded RAG components."""
+"""Reusable grounded RAG components.
 
-from .schemas import RagAnswer
-from .service import RagAnswerService
-
-__all__ = ["RagAnswer", "RagAnswerService"]
+Heavy retrieval/model modules are intentionally not imported at package import
+time so the compact desktop sidecar can run without CUDA/transformers.
+"""

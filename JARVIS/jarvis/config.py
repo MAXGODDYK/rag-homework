@@ -67,18 +67,23 @@ class JarvisConfig:
     web_search_api_key: str
     google_client_id: str
     google_client_secret: str
+    google_access_token: str
     microsoft_client_id: str
     microsoft_tenant_id: str
+    microsoft_access_token: str
 
 
 def load_jarvis_config() -> JarvisConfig:
     # Load the legacy settings first so .env and local constants use one precedence model.
     load_settings()
+    project_root = Path(
+        os.getenv("JARVIS_CONFIG_ROOT", str(PROJECT_ROOT))
+    ).expanduser().resolve()
     state_root = Path(
-        _local_constant("JARVIS_STATE_ROOT", str(PROJECT_ROOT / "local_state"))
+        _local_constant("JARVIS_STATE_ROOT", str(project_root / "local_state"))
     ).expanduser().resolve()
     return JarvisConfig(
-        project_root=PROJECT_ROOT.resolve(),
+        project_root=project_root,
         state_root=state_root,
         database_path=state_root / "jarvis.sqlite3",
         authorized_telegram_user_ids=_ids("AUTHORIZED_TELEGRAM_USER_IDS"),
@@ -93,6 +98,8 @@ def load_jarvis_config() -> JarvisConfig:
         web_search_api_key=_local_constant("WEB_SEARCH_API_KEY"),
         google_client_id=_local_constant("GOOGLE_CLIENT_ID"),
         google_client_secret=_local_constant("GOOGLE_CLIENT_SECRET"),
+        google_access_token=_local_constant("GOOGLE_ACCESS_TOKEN"),
         microsoft_client_id=_local_constant("MICROSOFT_CLIENT_ID"),
         microsoft_tenant_id=_local_constant("MICROSOFT_TENANT_ID", "common"),
+        microsoft_access_token=_local_constant("MICROSOFT_ACCESS_TOKEN"),
     )

@@ -284,4 +284,11 @@ class IngestionService:
                 raise
         for version in versions:
             Path(version["extracted_text_path"]).unlink(missing_ok=True)
+        original = Path(document["original_path"]).resolve(strict=False)
+        try:
+            original.relative_to(self.config.state_root.resolve())
+        except ValueError:
+            pass  # Imported repositories are never modified by corpus deletion.
+        else:
+            original.unlink(missing_ok=True)
         self.rebuild_vector_index(user_id, project_id)

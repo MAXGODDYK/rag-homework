@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from threading import Lock
 
@@ -13,6 +14,9 @@ class VectorIndexError(RuntimeError):
 
 
 class VectorIndex:
+    _models: dict[str, object] = {}
+    _models_lock = Lock()
+
     def __init__(self, root: Path, model_name: str) -> None:
         self.root = root
         self.model_name = model_name
@@ -21,9 +25,12 @@ class VectorIndex:
 
     def _load_model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
+            with self._models_lock:
+                if self.model_name not in self._models:
+                    from sentence_transformers import SentenceTransformer
 
-            self._model = SentenceTransformer(self.model_name)
+                    self._models[self.model_name] = SentenceTransformer(self.model_name)
+                self._model = self._models[self.model_name]
         return self._model
 
     def encode(self, texts: list[str]) -> np.ndarray:
@@ -42,6 +49,24 @@ class VectorIndex:
         if len(chunk_ids) != len(texts):
             raise VectorIndexError("chunk_ids/texts length mismatch")
         self.root.mkdir(parents=True, exist_ok=True)
+        if os.getenv("JARVIS_LEXICAL_ONLY") == "1":
+            (self.root / "faiss.index").unlink(missing_ok=True)
+            (self.root / "embeddings.npy").unlink(missing_ok=True)
+            (self.root / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "model": "disabled-in-compact-sidecar",
+                        "dimension": 0,
+                        "count": 0,
+                        "metric": "fts5-only",
+                        "chunk_ids": [],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            return
         vectors = self.encode(texts)
         if vectors.size:
             index = faiss.IndexFlatIP(vectors.shape[1])
@@ -63,6 +88,8 @@ class VectorIndex:
         )
 
     def search(self, query: str, top_k: int) -> list[tuple[str, float]]:
+        if os.getenv("JARVIS_LEXICAL_ONLY") == "1":
+            return []
         manifest_path = self.root / "manifest.json"
         index_path = self.root / "faiss.index"
         if not manifest_path.exists() or not index_path.exists():

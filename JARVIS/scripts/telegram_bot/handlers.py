@@ -64,7 +64,8 @@ async def start_command(
         "Надішліть запитання звичайним повідомленням. "
         "Відповідь буде побудована тільки за локальною knowledge base "
         "і міститиме chunk citations.\n\n"
-        "Команди: /help, /provider, /rate, /status, /sources, /reset"
+        "Команди: /help, /provider, /rate, /files, /use, /mode, "
+        "/scope, /approvals, /status, /sources, /reset"
     )
     await update.effective_message.reply_text(text)
 
@@ -83,6 +84,13 @@ async def help_command(
         "/provider freemodel — FreeModel OpenAI-compatible API\n"
         "/provider local — fine-tuned Qwen3-4B\n"
         "/status — стан моделей і лімітів\n"
+        "/files — файли поточного corpus\n"
+        "/uploadinfo — формати та ліміти завантаження\n"
+        "/use auto|all|<project-or-file> — вибір corpus\n"
+        "/mode safe|autonomous — режим агента\n"
+        "/scope workspace|roots|computer — filesystem scope\n"
+        "/approvals — активні підтвердження\n"
+        "/whoami — Telegram ID та allowlist status\n"
         "/sources — chunks останньої відповіді\n"
         "/reset — скинути provider та останній результат"
     )

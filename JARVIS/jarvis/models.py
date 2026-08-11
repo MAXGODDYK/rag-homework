@@ -150,3 +150,31 @@ class ApprovalConfirm(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     local_code: str | None = Field(default=None, min_length=6, max_length=16)
+
+
+class LocalSettingsUpdate(BaseModel):
+    """Write-only local settings accepted from the owner desktop interface."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    freemodel_api_key: str | None = Field(default=None, max_length=4096)
+    openai_api_key: str | None = Field(default=None, max_length=4096)
+    telegram_bot_token: str | None = Field(default=None, max_length=4096)
+    hf_token: str | None = Field(default=None, max_length=4096)
+    web_search_api_key: str | None = Field(default=None, max_length=4096)
+    google_access_token: str | None = Field(default=None, max_length=8192)
+    microsoft_access_token: str | None = Field(default=None, max_length=8192)
+    local_adapter_path: str | None = Field(default=None, max_length=2048)
+    freemodel_model: str | None = Field(default=None, max_length=256)
+    clear: list[
+        Literal[
+            "freemodel_api_key",
+            "openai_api_key",
+            "telegram_bot_token",
+            "hf_token",
+            "web_search_api_key",
+            "google_access_token",
+            "microsoft_access_token",
+            "local_adapter_path",
+        ]
+    ] = Field(default_factory=list, max_length=8)

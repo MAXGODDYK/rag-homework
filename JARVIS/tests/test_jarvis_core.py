@@ -10,10 +10,13 @@ from jarvis.agent import AgentService
 from jarvis.approvals import ApprovalManager, ApprovalError
 from jarvis.config import JarvisConfig
 from jarvis.database import Database
-from jarvis.models import AgentMode, FileScope, RiskLevel, SessionPolicy
+from jarvis.models import AgentMode, FileScope, LocalSettingsUpdate, RiskLevel, SessionPolicy
 from jarvis.security import PathGuard, SecurityError, SessionPolicyStore
+from jarvis.settings_store import update_local_settings
 from jarvis.tool_runner import ToolRunner
 from jarvis.tools.base import ToolContext, ToolRegistry, ToolResult, ToolSpec
+from jarvis.tools.calculations import CalculatorInput, calculate
+from jarvis.cli import parser
 
 
 def make_config(tmp_path: Path) -> JarvisConfig:
@@ -34,8 +37,10 @@ def make_config(tmp_path: Path) -> JarvisConfig:
         web_search_api_key="",
         google_client_id="",
         google_client_secret="",
+        google_access_token="",
         microsoft_client_id="",
         microsoft_tenant_id="common",
+        microsoft_access_token="",
     )
 
 
@@ -52,6 +57,31 @@ def test_session_policy_is_memory_only_and_resets() -> None:
     store.set("session", changed)
     assert store.get("session") == changed
     assert store.reset("session") == SessionPolicy()
+
+
+def test_sidecar_cli_accepts_desktop_parent_pid() -> None:
+    args = parser().parse_args([
+        "serve", "--parent-pid", "1234", "--config-root", "C:/config", "--state-root", "C:/state"
+    ])
+    assert args.parent_pid == 1234
+    assert args.config_root == "C:/config" and args.state_root == "C:/state"
+
+
+def test_local_settings_are_allowlisted_write_only_and_clearable(tmp_path: Path, monkeypatch) -> None:
+    config = make_config(tmp_path)
+    placeholder = "unit-test-placeholder"
+    monkeypatch.delenv("FREEMODEL_API_KEY", raising=False)
+    update_local_settings(
+        config,
+        LocalSettingsUpdate(freemodel_api_key=placeholder, freemodel_model="auto"),
+    )
+    body = (tmp_path / ".env").read_text(encoding="utf-8")
+    assert "FREEMODEL_API_KEY" in body and placeholder in body
+    assert "freemodel_api_key" not in LocalSettingsUpdate().model_dump(exclude_none=True)
+
+    update_local_settings(config, LocalSettingsUpdate(clear=["freemodel_api_key"]))
+    assert "FREEMODEL_API_KEY" not in (tmp_path / ".env").read_text(encoding="utf-8")
+    assert "FREEMODEL_API_KEY" not in __import__("os").environ
 
 
 def test_path_guard_enforces_scope_and_sensitive_paths(tmp_path: Path) -> None:
@@ -141,3 +171,62 @@ def test_safe_approval_executes_then_resumes_agent(tmp_path: Path) -> None:
     with pytest.raises(ApprovalError):
         approvals.confirm_button(pending.pending_approval_id)
 
+
+def test_math_prefilter_uses_calculator_before_final_answer(tmp_path: Path) -> None:
+    config = make_config(tmp_path)
+    database = make_database(config)
+    session = database.create_session("owner", None, "Math flow")
+    registry = ToolRegistry()
+    registry.register(
+        ToolSpec(
+            name="calculator",
+            description="safe arithmetic",
+            input_model=CalculatorInput,
+            risk=RiskLevel.CALCULATE,
+            handler=calculate,
+        )
+    )
+    approvals = ApprovalManager(database)
+    policies = SessionPolicyStore()
+    provider = FakeProvider(
+        [{"action": "final", "answer": "1017", "grounded": False}]
+    )
+    agent = AgentService(
+        config=config,
+        database=database,
+        registry=registry,
+        runner=ToolRunner(database, registry, approvals),
+        approvals=approvals,
+        retriever=EmptyRetriever(),
+        policies=policies,
+        providers={"local": provider},
+    )
+
+    answer = agent.answer(session["id"], "Calculate (125 * 8) + 17")
+    assert answer.tool_run_ids
+    run = database.query_one(
+        "SELECT * FROM tool_runs WHERE id=?", (answer.tool_run_ids[0],)
+    )
+    assert run and run["tool_name"] == "calculator" and run["status"] == "completed"
+
+
+def test_high_risk_requires_button_then_local_code_and_cannot_replay(tmp_path: Path) -> None:
+    config = make_config(tmp_path)
+    database = make_database(config)
+    session = database.create_session("owner", None, "High risk")
+    manager = ApprovalManager(database)
+    database.execute(
+        "INSERT INTO tool_runs(id,session_id,tool_name,risk_level,status,input_json,created_at) VALUES(?,?,?,?,?,?,datetime('now'))",
+        ("run", session["id"], "demo", "high_risk", "awaiting_approval", "{}"),
+    )
+    approval, code = manager.create(session["id"], "run", "Exact action", True)
+    assert code and approval["status"] == "pending"
+    with pytest.raises(ApprovalError):
+        manager.confirm_code(approval["id"], code)
+    assert manager.confirm_button(approval["id"])["status"] == "button_confirmed"
+    with pytest.raises(ApprovalError):
+        manager.confirm_code(approval["id"], "000000" if code != "000000" else "999999")
+    assert manager.confirm_code(approval["id"], code)["status"] == "confirmed"
+    manager.mark_executed(approval["id"])
+    with pytest.raises(ApprovalError):
+        manager.confirm_button(approval["id"])

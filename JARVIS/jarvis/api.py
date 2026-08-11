@@ -4,24 +4,76 @@ import asyncio
 import os
 import secrets
 import shutil
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import aiofiles
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from .agent import AgentError
 from .approvals import ApprovalError
-from .models import ApprovalConfirm, Event, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy
+from .models import ApprovalConfirm, Event, LocalSettingsUpdate, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy
 from .runtime import Runtime, build_runtime
+from .settings_store import public_settings_status, update_local_settings
 from .tools import ToolExecutionError
 
 
-def create_app(runtime: Runtime | None = None, ipc_token: str | None = None) -> FastAPI:
+def create_app(
+    runtime: Runtime | None = None,
+    ipc_token: str | None = None,
+    *,
+    enable_telegram: bool = False,
+) -> FastAPI:
     runtime = runtime or build_runtime()
     token = ipc_token or os.getenv("JARVIS_IPC_TOKEN") or secrets.token_urlsafe(32)
-    app = FastAPI(title="JARVIS Local Agent API", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        telegram_application = None
+        if enable_telegram:
+            from scripts.telegram_bot.bot import build_application
+
+            try:
+                telegram_application = build_application(runtime)
+                await telegram_application.initialize()
+                await telegram_application.start()
+                if telegram_application.updater is not None:
+                    await telegram_application.updater.start_polling(drop_pending_updates=True)
+                application.state.telegram = telegram_application
+                application.state.telegram_status = "running"
+            except Exception as error:
+                telegram_application = None
+                application.state.telegram_status = (
+                    f"disabled: {type(error).__name__}"
+                )
+        try:
+            yield
+        finally:
+            if telegram_application is not None:
+                if telegram_application.updater is not None:
+                    await telegram_application.updater.stop()
+                await telegram_application.stop()
+                await telegram_application.shutdown()
+
+    app = FastAPI(
+        title="JARVIS Local Agent API",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
     app.state.runtime = runtime
     app.state.ipc_token = token
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "tauri://localhost",
+            "http://tauri.localhost",
+            "http://localhost:1420",
+            "http://127.0.0.1:1420",
+        ],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "X-Jarvis-Token"],
+    )
 
     def authorize(x_jarvis_token: str = Header(default="")) -> str:
         if not secrets.compare_digest(x_jarvis_token, token):
@@ -34,12 +86,24 @@ def create_app(runtime: Runtime | None = None, ipc_token: str | None = None) -> 
             "status": "ok",
             "version": app.version,
             "database": str(runtime.config.database_path),
+            "config_root": str(runtime.config.project_root),
             "tools": len(runtime.registry.names()),
+            "telegram": getattr(app.state, "telegram_status", "not requested"),
         }
 
     @app.get("/v1/tools")
     def tools(_: str = Depends(authorize)):
         return runtime.registry.catalog()
+
+    @app.get("/v1/settings")
+    def local_settings(_: str = Depends(authorize)):
+        return public_settings_status(runtime.config, runtime.agent)
+
+    @app.post("/v1/settings")
+    def save_local_settings(payload: LocalSettingsUpdate, _: str = Depends(authorize)):
+        update_local_settings(runtime.config, payload)
+        runtime.agent.reload_providers()
+        return public_settings_status(runtime.config, runtime.agent)
 
     @app.post("/v1/projects")
     def create_project(payload: ProjectCreate, user_id: str = Depends(authorize)):
@@ -111,10 +175,6 @@ def create_app(runtime: Runtime | None = None, ipc_token: str | None = None) -> 
                 user_id, Event(type="chat.failed", session_id=session_id, payload={"error": str(error)})
             )
             raise HTTPException(status_code=422, detail=str(error)) from error
-        await runtime.events.publish(
-            user_id,
-            Event(type="chat.completed", session_id=session_id, payload=answer.model_dump(mode="json")),
-        )
         if answer.pending_approval_id:
             await runtime.events.publish(
                 user_id,
@@ -124,6 +184,23 @@ def create_app(runtime: Runtime | None = None, ipc_token: str | None = None) -> 
                     payload=answer.model_dump(mode="json"),
                 ),
             )
+        for offset in range(0, len(answer.answer), 96):
+            await runtime.events.publish(
+                user_id,
+                Event(
+                    type="chat.delta",
+                    session_id=session_id,
+                    payload={"delta": answer.answer[offset : offset + 96]},
+                ),
+            )
+        await runtime.events.publish(
+            user_id,
+            Event(
+                type="chat.completed",
+                session_id=session_id,
+                payload=answer.model_dump(mode="json"),
+            ),
+        )
         return answer
 
     @app.post("/v1/messages/{session_id}")
@@ -192,6 +269,27 @@ def create_app(runtime: Runtime | None = None, ipc_token: str | None = None) -> 
             "SELECT id,display_name,relative_path,media_type,language,size_bytes,status,updated_at FROM documents WHERE user_id=? AND project_id=? ORDER BY relative_path",
             (user_id, project_id),
         )
+
+    @app.get("/v1/projects/{project_id}/graph")
+    def project_graph(project_id: str, user_id: str = Depends(authorize)):
+        project = runtime.database.query_one(
+            "SELECT id FROM projects WHERE id=? AND user_id=?", (project_id, user_id)
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        nodes = runtime.database.query_all(
+            "SELECT id,relative_path,display_name,language FROM documents WHERE project_id=? AND user_id=? ORDER BY relative_path",
+            (project_id, user_id),
+        )
+        edges = runtime.database.query_all(
+            "SELECT id,source_document_id,target_ref,edge_type FROM graph_edges WHERE project_id=? ORDER BY source_document_id",
+            (project_id,),
+        )
+        symbols = runtime.database.query_all(
+            "SELECT document_id,name,kind,qualified_name,line_start,line_end FROM symbols WHERE project_id=? ORDER BY document_id,line_start LIMIT 5000",
+            (project_id,),
+        )
+        return {"nodes": nodes, "edges": edges, "symbols": symbols}
 
     @app.get("/v1/files/{document_id}/content")
     def file_content(document_id: str, user_id: str = Depends(authorize)):
