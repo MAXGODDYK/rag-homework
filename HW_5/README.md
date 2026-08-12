@@ -1,5 +1,10 @@
 # HW5: зовнішній tool офіційного курсу НБУ
 
+## Посилання для перевірки
+
+- HW5: https://github.com/MAXGODDYK/rag-homework/tree/HW_5/HW_5
+- Pull request: https://github.com/MAXGODDYK/rag-homework/pull/2
+
 HW5 продовжує grounded RAG та Telegram-бот із HW4 і додає
 read-only tool `get_nbu_exchange_rate`. Він отримує поточний або
 історичний офіційний курс через

@@ -1,5 +1,10 @@
 # Пояснення до домашнього завдання №5
 
+## Посилання
+
+- HW5: https://github.com/MAXGODDYK/rag-homework/tree/HW_5/HW_5
+- Pull request: https://github.com/MAXGODDYK/rag-homework/pull/2
+
 У HW5 я не змінював retrieval та grounded generation із HW4, а
 додав один зовнішній read-only tool — `get_nbu_exchange_rate`.
 Він отримує поточний або історичний офіційний курс через API
