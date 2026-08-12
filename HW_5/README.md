@@ -162,10 +162,14 @@ currency перетворюються на безпечний `ExternalToolError
 
 ### Перший запуск
 
-Відкрийте PowerShell у корені репозиторію:
+Відкрийте PowerShell у корені клонованого репозиторію — у
+каталозі, де знаходиться папка `HW_5`. Якщо репозиторій ще не
+клоновано:
 
 ```powershell
-cd "C:\Все мои проэкты\rag-homework"
+git clone --branch HW_5 --single-branch `
+    https://github.com/MAXGODDYK/rag-homework.git
+Set-Location ".\rag-homework"
 ```
 
 Якщо локального файла налаштувань ще немає, створіть його з
