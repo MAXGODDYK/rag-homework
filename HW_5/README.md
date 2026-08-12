@@ -165,8 +165,19 @@ currency перетворюються на безпечний `ExternalToolError
 Усі команди нижче виконуються з кореневої папки проєкту —
 каталогу, в якому знаходиться папка `HW_5`.
 
-Якщо локального файла налаштувань ще немає, створіть його з
-безпечного прикладу:
+1. Один раз створіть окреме середовище HW5 і встановіть залежності:
+
+```powershell
+py -3.14 -m venv .\HW_5\.venv
+.\HW_5\.venv\Scripts\python.exe -m pip install `
+    -r .\HW_5\requirements.txt
+```
+
+Якщо `HW_5\.venv` уже існує і залежності встановлено, повторювати
+цей крок не потрібно.
+
+2. Один раз створіть локальний файл налаштувань із безпечного
+прикладу:
 
 ```powershell
 Copy-Item `
@@ -180,18 +191,9 @@ Copy-Item `
 команди `/rate` окремий ключ НБУ не потрібен. Файл
 `constants.py` і `local_state` ігноруються Git.
 
-Запустіть bot у foreground:
+3. Запустіть bot у foreground:
 
 ```powershell
-.\HW_5\.venv\Scripts\python.exe -m HW_5.scripts.telegram_bot.bot
-```
-
-Якщо `HW_5\.venv` ще не створено:
-
-```powershell
-py -3.14 -m venv .\HW_5\.venv
-.\HW_5\.venv\Scripts\python.exe -m pip install `
-    -r .\HW_5\requirements.txt
 .\HW_5\.venv\Scripts\python.exe -m HW_5.scripts.telegram_bot.bot
 ```
 
