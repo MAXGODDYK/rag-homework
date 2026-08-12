@@ -160,9 +160,75 @@ currency перетворюються на безпечний `ExternalToolError
 
 ## Telegram
 
+### Перший запуск
+
+Відкрийте PowerShell у корені репозиторію:
+
 ```powershell
+cd "C:\Все мои проэкты\rag-homework"
+```
+
+Якщо локального файла налаштувань ще немає, створіть його з
+безпечного прикладу:
+
+```powershell
+Copy-Item `
+    ".\HW_5\local_config\constants.example.py" `
+    ".\HW_5\local_config\constants.py"
+```
+
+Відкрийте `HW_5\local_config\constants.py` і заповніть щонайменше
+`TELEGRAM_BOT_TOKEN`. Для звичайних RAG-запитів також налаштуйте
+`FREEMODEL_API_KEY`, `OPENAI_API_KEY` або local provider. Для
+команди `/rate` окремий ключ НБУ не потрібен. Файл
+`constants.py` і `local_state` ігноруються Git.
+
+Запустіть bot у foreground:
+
+```powershell
+Set-Location ".\HW_5"
 .\.venv\Scripts\python.exe -m scripts.telegram_bot.bot
 ```
+
+Якщо `HW_5\.venv` ще не створено:
+
+```powershell
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m scripts.telegram_bot.bot
+```
+
+Після успішного запуску в консолі з'явиться:
+
+```text
+=============== TELEGRAM BOT ===============
+Polling started. Press Ctrl+C to stop.
+```
+
+Одночасно має працювати лише один екземпляр bot із цим token,
+інакше Telegram long polling поверне conflict.
+
+### Зупинка
+
+У тому самому вікні PowerShell натисніть `Ctrl+C` і дочекайтеся
+повернення командного рядка. Це штатно завершує polling.
+
+Якщо вікно було закрито, а процес залишився працювати, знайдіть
+лише процес HW5 bot і зупиніть його:
+
+```powershell
+$bot = Get-CimInstance Win32_Process |
+    Where-Object {
+        $_.Name -match '^python(.exe)?$' -and
+        $_.CommandLine -like '*scripts.telegram_bot.bot*'
+    }
+
+$bot | Select-Object ProcessId, CommandLine
+$bot | ForEach-Object { Stop-Process -Id $_.ProcessId }
+```
+
+Перед `Stop-Process` перевірте показаний `CommandLine`, щоб не
+зупинити інший Python-процес.
 
 Нові команди:
 
