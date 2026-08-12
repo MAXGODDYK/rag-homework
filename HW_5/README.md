@@ -162,15 +162,8 @@ currency перетворюються на безпечний `ExternalToolError
 
 ### Перший запуск
 
-Відкрийте PowerShell у корені клонованого репозиторію — у
-каталозі, де знаходиться папка `HW_5`. Якщо репозиторій ще не
-клоновано:
-
-```powershell
-git clone --branch HW_5 --single-branch `
-    https://github.com/MAXGODDYK/rag-homework.git
-Set-Location ".\rag-homework"
-```
+Усі команди нижче виконуються з кореневої папки проєкту —
+каталогу, в якому знаходиться папка `HW_5`.
 
 Якщо локального файла налаштувань ще немає, створіть його з
 безпечного прикладу:
@@ -190,16 +183,16 @@ Copy-Item `
 Запустіть bot у foreground:
 
 ```powershell
-Set-Location ".\HW_5"
-.\.venv\Scripts\python.exe -m scripts.telegram_bot.bot
+.\HW_5\.venv\Scripts\python.exe -m HW_5.scripts.telegram_bot.bot
 ```
 
 Якщо `HW_5\.venv` ще не створено:
 
 ```powershell
-py -3.14 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m scripts.telegram_bot.bot
+py -3.14 -m venv .\HW_5\.venv
+.\HW_5\.venv\Scripts\python.exe -m pip install `
+    -r .\HW_5\requirements.txt
+.\HW_5\.venv\Scripts\python.exe -m HW_5.scripts.telegram_bot.bot
 ```
 
 Після успішного запуску в консолі з'явиться:
