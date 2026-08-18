@@ -1,5 +1,10 @@
 # HW6: контрольований agentic workflow
 
+## Посилання для перевірки
+
+- HW6: https://github.com/MAXGODDYK/rag-homework/tree/HW_6/HW_6
+- Pull request: https://github.com/MAXGODDYK/rag-homework/pull/3
+
 У HW6 я продовжив chatbot із попередніх робіт і додав окремий
 детермінований agentic workflow для персонального планування студента.
 Routing не використовує LLM або зовнішні API: кожен route, перехід

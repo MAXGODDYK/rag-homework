@@ -1,5 +1,10 @@
 # Пояснення до домашнього завдання №6
 
+## Посилання
+
+- HW6: https://github.com/MAXGODDYK/rag-homework/tree/HW_6/HW_6
+- Pull request: https://github.com/MAXGODDYK/rag-homework/pull/3
+
 У HW6 я реалізував контрольований agentic workflow для персонального
 планування студента. Його завдання — визначити, чи потрібен
 користувачеві план підготовки до іспиту, розпорядок навчального дня,
