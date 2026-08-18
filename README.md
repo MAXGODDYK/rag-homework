@@ -8,3 +8,5 @@
   Qwen, Telegram-бот і перевірка JSON/citations.
 - `HW_5` — allowlisted external tool офіційного курсу НБУ,
   LLM-routing, deterministic answers і Telegram `/rate`.
+- `HW_6` — deterministic agentic workflow, typed state, multi-step
+  mock tools, повний trace і Telegram `/plan`.
