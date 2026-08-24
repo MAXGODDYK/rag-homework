@@ -1,0 +1,1790 @@
+{
+  "config": {
+    "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "reranker_models": {
+      "bge": "BAAI/bge-reranker-v2-m3",
+      "qwen3_4b": "Qwen/Qwen3-Reranker-4B"
+    },
+    "chunk_count": 25,
+    "query_count": 8,
+    "top_k": 3,
+    "candidate_k": 10,
+    "semantic_weight": 0.75,
+    "bm25_weight": 0.25,
+    "latency_excludes_model_loading": true
+  },
+  "metrics": {
+    "semantic": {
+      "hit_rate_at_1": 0.375,
+      "hit_rate_at_3": 0.625,
+      "recall_at_3": 0.5,
+      "mrr_at_3": 0.5,
+      "mean_latency_ms": 11.622662499917169,
+      "p95_latency_ms": 13.870799999813244
+    },
+    "hybrid": {
+      "hit_rate_at_1": 0.5,
+      "hit_rate_at_3": 0.75,
+      "recall_at_3": 0.5729166666666666,
+      "mrr_at_3": 0.6041666666666667,
+      "mean_latency_ms": 11.794587500048692,
+      "p95_latency_ms": 14.688585000112651
+    },
+    "reranked_bge": {
+      "hit_rate_at_1": 0.75,
+      "hit_rate_at_3": 0.75,
+      "recall_at_3": 0.59375,
+      "mrr_at_3": 0.75,
+      "mean_latency_ms": 2062.6649250000355,
+      "p95_latency_ms": 2136.3445399998454
+    },
+    "reranked_qwen": {
+      "hit_rate_at_1": 0.75,
+      "hit_rate_at_3": 0.875,
+      "recall_at_3": 0.6458333333333333,
+      "mrr_at_3": 0.8125,
+      "mean_latency_ms": 28094.309812499887,
+      "p95_latency_ms": 28734.216865000188
+    }
+  },
+  "rank_comparison": {
+    "reranked_bge": {
+      "improved": [
+        "q01",
+        "q02",
+        "q07"
+      ],
+      "unchanged": [
+        "q03",
+        "q04",
+        "q05",
+        "q06",
+        "q08"
+      ],
+      "worsened": []
+    },
+    "reranked_qwen": {
+      "improved": [
+        "q01",
+        "q02",
+        "q07",
+        "q08"
+      ],
+      "unchanged": [
+        "q03",
+        "q04",
+        "q05",
+        "q06"
+      ],
+      "worsened": []
+    }
+  },
+  "metadata_filter_checks": [
+    {
+      "query_id": "q01",
+      "source_file": "data/raw/exam_time_planning.html",
+      "candidate_count": 18,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q02",
+      "source_file": "data/raw/exam_time_planning.html",
+      "candidate_count": 18,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q03",
+      "source_file": "data/raw/student_daily_routine.html",
+      "candidate_count": 3,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q04",
+      "source_file": "data/raw/student_time_management.html",
+      "candidate_count": 4,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q05",
+      "source_file": "data/raw/student_daily_routine.html",
+      "candidate_count": 3,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q06",
+      "source_file": "data/raw/exam_time_planning.html",
+      "candidate_count": 18,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q07",
+      "source_file": "data/raw/exam_time_planning.html",
+      "candidate_count": 18,
+      "all_results_match": true
+    },
+    {
+      "query_id": "q08",
+      "source_file": "data/raw/exam_time_planning.html",
+      "candidate_count": 18,
+      "all_results_match": true
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "q01",
+      "query": "Як скласти реалістичний план підготовки до іспиту?",
+      "relevant_chunk_ids": [
+        "exam_time_planning_chunk_011",
+        "exam_time_planning_chunk_012",
+        "exam_time_planning_chunk_013"
+      ],
+      "expected_source_file": "data/raw/exam_time_planning.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 14.300599999842234,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 0.5,
+            "first_relevant_rank": 2.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_015",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Обмінюйтеся інформацією, діліться успіхами у підготовці та своїми лайфхаками і…",
+              "semantic_score": 0.6943503618240356,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_011",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - відсутність зворотного зв'язку – відсутність способу виміряти наш прогрес аб…",
+              "semantic_score": 0.6859778165817261,
+              "semantic_normalized": 0.9781784415245056
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_012",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Чим конкретніші формулювання, тим краще ви зрозумієте, що потрібно для досягне…",
+              "semantic_score": 0.6809098720550537,
+              "semantic_normalized": 0.9649696946144104
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 16.01050000044779,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_011",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - відсутність зворотного зв'язку – відсутність способу виміряти наш прогрес аб…",
+              "semantic_score": 0.6859778165817261,
+              "semantic_normalized": 0.9781784415245056,
+              "bm25_score": 5.696913719177246,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.983633816242218
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_015",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Обмінюйтеся інформацією, діліться успіхами у підготовці та своїми лайфхаками і…",
+              "semantic_score": 0.6943503618240356,
+              "semantic_normalized": 1.0,
+              "bm25_score": 0.6262590289115906,
+              "bm25_normalized": 0.10992952436208725,
+              "hybrid_score": 0.7774823904037476
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_012",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Чим конкретніші формулювання, тим краще ви зрозумієте, що потрібно для досягне…",
+              "semantic_score": 0.6809098720550537,
+              "semantic_normalized": 0.9649696946144104,
+              "bm25_score": 0.5687087178230286,
+              "bm25_normalized": 0.09982751309871674,
+              "hybrid_score": 0.7486841678619385
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2012.4347999999372,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.3333333333333333,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_011",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - відсутність зворотного зв'язку – відсутність способу виміряти наш прогрес аб…",
+              "semantic_score": 0.6859778165817261,
+              "semantic_normalized": 0.9781784415245056,
+              "bm25_score": 5.696913719177246,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.983633816242218,
+              "reranker_raw_score": 0.44045281410217285,
+              "reranker_score": 0.6083669066429138
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_014",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - Для зручності ви можете намалювати собі справжнє дерево навчальних цілей, де…",
+              "semantic_score": 0.6225064992904663,
+              "semantic_normalized": 0.8127514719963074,
+              "bm25_score": 0.6184362173080444,
+              "bm25_normalized": 0.1085563600063324,
+              "hybrid_score": 0.6367026567459106,
+              "reranker_raw_score": 0.2656393051147461,
+              "reranker_score": 0.5660220980644226
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_018",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання По-друге, час на іспит обмежений, тому під час підготовки до тесту ви маєте не…",
+              "semantic_score": 0.6497191190719604,
+              "semantic_normalized": 0.8836764693260193,
+              "bm25_score": 1.9167600870132446,
+              "bm25_normalized": 0.3364558815956116,
+              "hybrid_score": 0.746871292591095,
+              "reranker_raw_score": 0.19592934846878052,
+              "reranker_score": 0.5488262176513672
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 28210.26989999973,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_012",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Чим конкретніші формулювання, тим краще ви зрозумієте, що потрібно для досягне…",
+              "semantic_score": 0.6809098720550537,
+              "semantic_normalized": 0.9649696946144104,
+              "bm25_score": 0.5687087178230286,
+              "bm25_normalized": 0.09982751309871674,
+              "hybrid_score": 0.7486841678619385,
+              "reranker_raw_score": 3.0,
+              "reranker_score": 0.9525741338729858
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_011",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - відсутність зворотного зв'язку – відсутність способу виміряти наш прогрес аб…",
+              "semantic_score": 0.6859778165817261,
+              "semantic_normalized": 0.9781784415245056,
+              "bm25_score": 5.696913719177246,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.983633816242218,
+              "reranker_raw_score": 2.9375,
+              "reranker_score": 0.949669361114502
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_014",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - Для зручності ви можете намалювати собі справжнє дерево навчальних цілей, де…",
+              "semantic_score": 0.6225064992904663,
+              "semantic_normalized": 0.8127514719963074,
+              "bm25_score": 0.6184362173080444,
+              "bm25_normalized": 0.1085563600063324,
+              "hybrid_score": 0.6367026567459106,
+              "reranker_raw_score": 2.375,
+              "reranker_score": 0.9149009585380554
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q02",
+      "query": "У який час доби найкраще вчитися?",
+      "relevant_chunk_ids": [
+        "exam_time_planning_chunk_002",
+        "exam_time_planning_chunk_003"
+      ],
+      "expected_source_file": "data/raw/exam_time_planning.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 12.92250000005879,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 0.5,
+            "first_relevant_rank": 2.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_008",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Найкраще, щоб між сесіями був рівномірний інтервал. Наприклад, день через день…",
+              "semantic_score": 0.7203968167304993,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_003",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання Для всіх час п…",
+              "semantic_score": 0.6911662817001343,
+              "semantic_normalized": 0.9257546663284302
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_002",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Вступ / Порада №1: Знайдіть свій ідеальний час для навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Вступ / Порада №1: Знайдіть свій ідеальний час для навчання Спільно зі студією онлайн-освіти EdEra ми підготували дієві ла…",
+              "semantic_score": 0.6754342913627625,
+              "semantic_normalized": 0.8857955932617188
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 12.233599999490252,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 0.5,
+            "first_relevant_rank": 2.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_008",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Найкраще, щоб між сесіями був рівномірний інтервал. Наприклад, день через день…",
+              "semantic_score": 0.7203968167304993,
+              "semantic_normalized": 1.0,
+              "bm25_score": 5.46061897277832,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 1.0
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_003",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання Для всіх час п…",
+              "semantic_score": 0.6911662817001343,
+              "semantic_normalized": 0.9257546663284302,
+              "bm25_score": 1.0838146209716797,
+              "bm25_normalized": 0.1984783411026001,
+              "hybrid_score": 0.7439355850219727
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_002",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Вступ / Порада №1: Знайдіть свій ідеальний час для навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Вступ / Порада №1: Знайдіть свій ідеальний час для навчання Спільно зі студією онлайн-освіти EdEra ми підготували дієві ла…",
+              "semantic_score": 0.6754342913627625,
+              "semantic_normalized": 0.8857955932617188,
+              "bm25_score": 1.0521447658538818,
+              "bm25_normalized": 0.19267866015434265,
+              "hybrid_score": 0.7125163674354553
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2070.3043000003163,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_002",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Вступ / Порада №1: Знайдіть свій ідеальний час для навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Вступ / Порада №1: Знайдіть свій ідеальний час для навчання Спільно зі студією онлайн-освіти EdEra ми підготували дієві ла…",
+              "semantic_score": 0.6754342913627625,
+              "semantic_normalized": 0.8857955932617188,
+              "bm25_score": 1.0521447658538818,
+              "bm25_normalized": 0.19267866015434265,
+              "hybrid_score": 0.7125163674354553,
+              "reranker_raw_score": 0.9272894263267517,
+              "reranker_score": 0.7165250182151794
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_008",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Найкраще, щоб між сесіями був рівномірний інтервал. Наприклад, день через день…",
+              "semantic_score": 0.7203968167304993,
+              "semantic_normalized": 1.0,
+              "bm25_score": 5.46061897277832,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 1.0,
+              "reranker_raw_score": 0.12205477803945541,
+              "reranker_score": 0.5304758548736572
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_003",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання Для всіх час п…",
+              "semantic_score": 0.6911662817001343,
+              "semantic_normalized": 0.9257546663284302,
+              "bm25_score": 1.0838146209716797,
+              "bm25_normalized": 0.1984783411026001,
+              "hybrid_score": 0.7439355850219727,
+              "reranker_raw_score": 0.08975234627723694,
+              "reranker_score": 0.5224230289459229
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 28049.38200000015,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_002",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Вступ / Порада №1: Знайдіть свій ідеальний час для навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Вступ / Порада №1: Знайдіть свій ідеальний час для навчання Спільно зі студією онлайн-освіти EdEra ми підготували дієві ла…",
+              "semantic_score": 0.6754342913627625,
+              "semantic_normalized": 0.8857955932617188,
+              "bm25_score": 1.0521447658538818,
+              "bm25_normalized": 0.19267866015434265,
+              "hybrid_score": 0.7125163674354553,
+              "reranker_raw_score": 3.5,
+              "reranker_score": 0.970687747001648
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.6503730416297913,
+              "semantic_normalized": 0.8221402168273926,
+              "bm25_score": 1.0577645301818848,
+              "bm25_normalized": 0.19370780885219574,
+              "hybrid_score": 0.6650320887565613,
+              "reranker_raw_score": 0.375,
+              "reranker_score": 0.5926666259765625
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_003",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання Для всіх час п…",
+              "semantic_score": 0.6911662817001343,
+              "semantic_normalized": 0.9257546663284302,
+              "bm25_score": 1.0838146209716797,
+              "bm25_normalized": 0.1984783411026001,
+              "hybrid_score": 0.7439355850219727,
+              "reranker_raw_score": 0.0,
+              "reranker_score": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q03",
+      "query": "Як розставити пріоритети між терміновими та важливими справами?",
+      "relevant_chunk_ids": [
+        "student_daily_routine_chunk_001",
+        "student_daily_routine_chunk_002",
+        "student_time_management_chunk_002"
+      ],
+      "expected_source_file": "data/raw/student_daily_routine.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 13.072599999759404,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.557395339012146,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5405386686325073,
+              "semantic_normalized": 0.9251822233200073
+            },
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.533307671546936,
+              "semantic_normalized": 0.89308762550354
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 11.254699999881268,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.533307671546936,
+              "semantic_normalized": 0.89308762550354,
+              "bm25_score": 2.698582410812378,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.919815719127655
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.557395339012146,
+              "semantic_normalized": 1.0,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.75
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5405386686325073,
+              "semantic_normalized": 0.9251822233200073,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.6938866376876831
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2030.053599999519,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5405386686325073,
+              "semantic_normalized": 0.9251822233200073,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.6938866376876831,
+              "reranker_raw_score": 0.1496877819299698,
+              "reranker_score": 0.5373522639274597
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.557395339012146,
+              "semantic_normalized": 1.0,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.75,
+              "reranker_raw_score": 0.06223573163151741,
+              "reranker_score": 0.515553891658783
+            },
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.533307671546936,
+              "semantic_normalized": 0.89308762550354,
+              "bm25_score": 2.698582410812378,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.919815719127655,
+              "reranker_raw_score": 0.019830329343676567,
+              "reranker_score": 0.5049574375152588
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 27437.54589999935,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5405386686325073,
+              "semantic_normalized": 0.9251822233200073,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.6938866376876831,
+              "reranker_raw_score": 2.875,
+              "reranker_score": 0.9465966820716858
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.557395339012146,
+              "semantic_normalized": 1.0,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.75,
+              "reranker_raw_score": 0.9375,
+              "reranker_score": 0.7185943722724915
+            },
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.533307671546936,
+              "semantic_normalized": 0.89308762550354,
+              "bm25_score": 2.698582410812378,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.919815719127655,
+              "reranker_raw_score": 0.125,
+              "reranker_score": 0.531209409236908
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q04",
+      "query": "Що робити, якщо я постійно відкладаю навчання?",
+      "relevant_chunk_ids": [
+        "exam_time_planning_chunk_018",
+        "student_time_management_chunk_002",
+        "student_time_management_chunk_003"
+      ],
+      "expected_source_file": "data/raw/student_time_management.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 10.58290000037232,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.6213268637657166,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_016",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Що ще? - Стежте за фактичним часом, скільки ви навчаєтеся. Досить часто ми ніб…",
+              "semantic_score": 0.5969387888908386,
+              "semantic_normalized": 0.9231418967247009
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_015",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Обмінюйтеся інформацією, діліться успіхами у підготовці та своїми лайфхаками і…",
+              "semantic_score": 0.5936603546142578,
+              "semantic_normalized": 0.9128100275993347
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 10.488700000678364,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.6213268637657166,
+              "semantic_normalized": 1.0,
+              "bm25_score": 2.6402363777160645,
+              "bm25_normalized": 0.8013185262680054,
+              "hybrid_score": 0.9503296613693237
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_016",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Що ще? - Стежте за фактичним часом, скільки ви навчаєтеся. Досить часто ми ніб…",
+              "semantic_score": 0.5969387888908386,
+              "semantic_normalized": 0.9231418967247009,
+              "bm25_score": 2.5354464054107666,
+              "bm25_normalized": 0.7695145010948181,
+              "hybrid_score": 0.8847350478172302
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_017",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Таким чином ви зрозумієте, скільки насправді ви витрачаєте часу на навчання. Я…",
+              "semantic_score": 0.5925936698913574,
+              "semantic_normalized": 0.9094484448432922,
+              "bm25_score": 2.480351209640503,
+              "bm25_normalized": 0.75279301404953,
+              "hybrid_score": 0.8702846169471741
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2078.469000000041,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_016",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Що ще? - Стежте за фактичним часом, скільки ви навчаєтеся. Досить часто ми ніб…",
+              "semantic_score": 0.5969387888908386,
+              "semantic_normalized": 0.9231418967247009,
+              "bm25_score": 2.5354464054107666,
+              "bm25_normalized": 0.7695145010948181,
+              "hybrid_score": 0.8847350478172302,
+              "reranker_raw_score": 0.01883401907980442,
+              "reranker_score": 0.5047083497047424
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_009",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Також ви можете запланувати освітні сесії в онлайн-календарях (наприклад, Goog…",
+              "semantic_score": 0.5622848868370056,
+              "semantic_normalized": 0.8139314651489258,
+              "bm25_score": 0.9582436084747314,
+              "bm25_normalized": 0.2908294200897217,
+              "hybrid_score": 0.6831559538841248,
+              "reranker_raw_score": 0.016464846208691597,
+              "reranker_score": 0.5041161179542542
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_017",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Таким чином ви зрозумієте, скільки насправді ви витрачаєте часу на навчання. Я…",
+              "semantic_score": 0.5925936698913574,
+              "semantic_normalized": 0.9094484448432922,
+              "bm25_score": 2.480351209640503,
+              "bm25_normalized": 0.75279301404953,
+              "hybrid_score": 0.8702846169471741,
+              "reranker_raw_score": 0.009947260841727257,
+              "reranker_score": 0.5024867653846741
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 28771.55070000026,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_017",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Таким чином ви зрозумієте, скільки насправді ви витрачаєте часу на навчання. Я…",
+              "semantic_score": 0.5925936698913574,
+              "semantic_normalized": 0.9094484448432922,
+              "bm25_score": 2.480351209640503,
+              "bm25_normalized": 0.75279301404953,
+              "hybrid_score": 0.8702846169471741,
+              "reranker_raw_score": 3.3125,
+              "reranker_score": 0.9648551344871521
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_016",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Що ще? - Стежте за фактичним часом, скільки ви навчаєтеся. Досить часто ми ніб…",
+              "semantic_score": 0.5969387888908386,
+              "semantic_normalized": 0.9231418967247009,
+              "bm25_score": 2.5354464054107666,
+              "bm25_normalized": 0.7695145010948181,
+              "hybrid_score": 0.8847350478172302,
+              "reranker_raw_score": 2.0,
+              "reranker_score": 0.8807970285415649
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_009",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Також ви можете запланувати освітні сесії в онлайн-календарях (наприклад, Goog…",
+              "semantic_score": 0.5622848868370056,
+              "semantic_normalized": 0.8139314651489258,
+              "bm25_score": 0.9582436084747314,
+              "bm25_normalized": 0.2908294200897217,
+              "hybrid_score": 0.6831559538841248,
+              "reranker_raw_score": 1.4375,
+              "reranker_score": 0.8080672025680542
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q05",
+      "query": "Як правильно організувати режим дня студента?",
+      "relevant_chunk_ids": [
+        "student_daily_routine_chunk_001",
+        "student_daily_routine_chunk_002",
+        "student_daily_routine_chunk_003"
+      ],
+      "expected_source_file": "data/raw/student_daily_routine.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 10.427700000036566,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.8649381399154663,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "student_time_management_chunk_001",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Вступ / Створіть розклад",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Вступ / Створіть розклад Здатність ефективно управляти часом є надзвичайно важливою навичкою для студентів. Незалежно від того, навчаєтесь ви у вищ…",
+              "semantic_score": 0.7094261646270752,
+              "semantic_normalized": 0.6451561450958252
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_003",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 4 60% – запланована діяльність; 20% – непередбачена активність; 20% – спонтанна активність. Отже, на п…",
+              "semantic_score": 0.6856091022491455,
+              "semantic_normalized": 0.5908108949661255
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 10.583600000245497,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.8649381399154663,
+              "semantic_normalized": 1.0,
+              "bm25_score": 4.646106243133545,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 1.0
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.6758713126182556,
+              "semantic_normalized": 0.5685914158821106,
+              "bm25_score": 4.4638214111328125,
+              "bm25_normalized": 0.9607661366462708,
+              "hybrid_score": 0.6666350960731506
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_003",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 4 60% – запланована діяльність; 20% – непередбачена активність; 20% – спонтанна активність. Отже, на п…",
+              "semantic_score": 0.6856091022491455,
+              "semantic_normalized": 0.5908108949661255,
+              "bm25_score": 3.9300155639648438,
+              "bm25_normalized": 0.8458729386329651,
+              "hybrid_score": 0.6545764207839966
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2004.1276000001744,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.6758713126182556,
+              "semantic_normalized": 0.5685914158821106,
+              "bm25_score": 4.4638214111328125,
+              "bm25_normalized": 0.9607661366462708,
+              "hybrid_score": 0.6666350960731506,
+              "reranker_raw_score": 0.9551453590393066,
+              "reranker_score": 0.7221487760543823
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.8649381399154663,
+              "semantic_normalized": 1.0,
+              "bm25_score": 4.646106243133545,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 1.0,
+              "reranker_raw_score": 0.9324263334274292,
+              "reranker_score": 0.7175673246383667
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_003",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 4 60% – запланована діяльність; 20% – непередбачена активність; 20% – спонтанна активність. Отже, на п…",
+              "semantic_score": 0.6856091022491455,
+              "semantic_normalized": 0.5908108949661255,
+              "bm25_score": 3.9300155639648438,
+              "bm25_normalized": 0.8458729386329651,
+              "hybrid_score": 0.6545764207839966,
+              "reranker_raw_score": 0.6778672933578491,
+              "reranker_score": 0.6632624864578247
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 26928.054599999996,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 1.0,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.8649381399154663,
+              "semantic_normalized": 1.0,
+              "bm25_score": 4.646106243133545,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 1.0,
+              "reranker_raw_score": 4.5625,
+              "reranker_score": 0.9896718263626099
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_003",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 4 60% – запланована діяльність; 20% – непередбачена активність; 20% – спонтанна активність. Отже, на п…",
+              "semantic_score": 0.6856091022491455,
+              "semantic_normalized": 0.5908108949661255,
+              "bm25_score": 3.9300155639648438,
+              "bm25_normalized": 0.8458729386329651,
+              "hybrid_score": 0.6545764207839966,
+              "reranker_raw_score": 3.125,
+              "reranker_score": 0.957912266254425
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_001",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 1 / КРОК 2 / КРОК 3",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 1 / КРОК 2 / КРОК 3 Визначте свою мету в житті на найближчі роки. Візьміть ручку і папір і напишіть та…",
+              "semantic_score": 0.6758713126182556,
+              "semantic_normalized": 0.5685914158821106,
+              "bm25_score": 4.4638214111328125,
+              "bm25_normalized": 0.9607661366462708,
+              "hybrid_score": 0.6666350960731506,
+              "reranker_raw_score": 2.9375,
+              "reranker_score": 0.949669361114502
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q06",
+      "query": "Як поєднати навчання, відпочинок і сон без перевантаження?",
+      "relevant_chunk_ids": [
+        "exam_time_planning_chunk_004",
+        "exam_time_planning_chunk_005",
+        "student_time_management_chunk_004"
+      ],
+      "expected_source_file": "data/raw/exam_time_planning.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 12.027599999782979,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_005",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням У жовтні 2019 року професо…",
+              "semantic_score": 0.7363126277923584,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.726965069770813,
+              "semantic_normalized": 0.9720107316970825
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_006",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте с…",
+              "semantic_score": 0.7216644287109375,
+              "semantic_normalized": 0.956139087677002
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 11.863400000038382,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.726965069770813,
+              "semantic_normalized": 0.9720107316970825,
+              "bm25_score": 4.5229949951171875,
+              "bm25_normalized": 0.9705578088760376,
+              "hybrid_score": 0.9716475009918213
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_005",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням У жовтні 2019 року професо…",
+              "semantic_score": 0.7363126277923584,
+              "semantic_normalized": 1.0,
+              "bm25_score": 2.5407769680023193,
+              "bm25_normalized": 0.5452075004577637,
+              "hybrid_score": 0.8863018751144409
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_006",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте с…",
+              "semantic_score": 0.7216644287109375,
+              "semantic_normalized": 0.956139087677002,
+              "bm25_score": 2.5808537006378174,
+              "bm25_normalized": 0.5538073182106018,
+              "hybrid_score": 0.8555561304092407
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2106.855600000017,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.726965069770813,
+              "semantic_normalized": 0.9720107316970825,
+              "bm25_score": 4.5229949951171875,
+              "bm25_normalized": 0.9705578088760376,
+              "hybrid_score": 0.9716475009918213,
+              "reranker_raw_score": 0.20394839346408844,
+              "reranker_score": 0.5508111119270325
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_005",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням У жовтні 2019 року професо…",
+              "semantic_score": 0.7363126277923584,
+              "semantic_normalized": 1.0,
+              "bm25_score": 2.5407769680023193,
+              "bm25_normalized": 0.5452075004577637,
+              "hybrid_score": 0.8863018751144409,
+              "reranker_raw_score": 0.1759006530046463,
+              "reranker_score": 0.5438621640205383
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_003",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання Для всіх час п…",
+              "semantic_score": 0.599215030670166,
+              "semantic_normalized": 0.5894902944564819,
+              "bm25_score": 4.660201549530029,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.6921176910400391,
+              "reranker_raw_score": 0.12610596418380737,
+              "reranker_score": 0.5314847826957703
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 28417.67869999967,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.3333333333333333,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.726965069770813,
+              "semantic_normalized": 0.9720107316970825,
+              "bm25_score": 4.5229949951171875,
+              "bm25_normalized": 0.9705578088760376,
+              "hybrid_score": 0.9716475009918213,
+              "reranker_raw_score": 4.75,
+              "reranker_score": 0.9914224743843079
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_006",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте с…",
+              "semantic_score": 0.7216644287109375,
+              "semantic_normalized": 0.956139087677002,
+              "bm25_score": 2.5808537006378174,
+              "bm25_normalized": 0.5538073182106018,
+              "hybrid_score": 0.8555561304092407,
+              "reranker_raw_score": 4.5625,
+              "reranker_score": 0.9896718263626099
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_003",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання Для всіх час п…",
+              "semantic_score": 0.599215030670166,
+              "semantic_normalized": 0.5894902944564819,
+              "bm25_score": 4.660201549530029,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.6921176910400391,
+              "reranker_raw_score": 4.3125,
+              "reranker_score": 0.9867772459983826
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q07",
+      "query": "Чи варто робити перерви під час підготовки до іспитів?",
+      "relevant_chunk_ids": [
+        "exam_time_planning_chunk_005",
+        "exam_time_planning_chunk_006",
+        "exam_time_planning_chunk_007",
+        "student_time_management_chunk_003"
+      ],
+      "expected_source_file": "data/raw/exam_time_planning.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 10.54669999939506,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_015",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Обмінюйтеся інформацією, діліться успіхами у підготовці та своїми лайфхаками і…",
+              "semantic_score": 0.7084524035453796,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_016",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Що ще? - Стежте за фактичним часом, скільки ви навчаєтеся. Досить часто ми ніб…",
+              "semantic_score": 0.6995161771774292,
+              "semantic_normalized": 0.9768510460853577
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.6959642171859741,
+              "semantic_normalized": 0.9676498174667358
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 11.797999999544118,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.25,
+            "mrr_at_3": 0.3333333333333333,
+            "first_relevant_rank": 3.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.6959642171859741,
+              "semantic_normalized": 0.9676498174667358,
+              "bm25_score": 4.656210899353027,
+              "bm25_normalized": 0.7785508036613464,
+              "hybrid_score": 0.9203750491142273
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_017",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання Таким чином ви зрозумієте, скільки насправді ви витрачаєте часу на навчання. Я…",
+              "semantic_score": 0.6807552576065063,
+              "semantic_normalized": 0.9282515645027161,
+              "bm25_score": 3.916802406311035,
+              "bm25_normalized": 0.6549165844917297,
+              "hybrid_score": 0.8599178194999695
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_007",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання Між сесіями робіть перерви по 5-10 х…",
+              "semantic_score": 0.6906206607818604,
+              "semantic_normalized": 0.953807532787323,
+              "bm25_score": 3.1376302242279053,
+              "bm25_normalized": 0.5246335864067078,
+              "hybrid_score": 0.8465140461921692
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2152.223199999753,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.75,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_005",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням У жовтні 2019 року професо…",
+              "semantic_score": 0.6099354028701782,
+              "semantic_normalized": 0.7447953820228577,
+              "bm25_score": 5.980612754821777,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.8085965514183044,
+              "reranker_raw_score": 0.9747026562690735,
+              "reranker_score": 0.7260558009147644
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_007",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання Між сесіями робіть перерви по 5-10 х…",
+              "semantic_score": 0.6906206607818604,
+              "semantic_normalized": 0.953807532787323,
+              "bm25_score": 3.1376302242279053,
+              "bm25_normalized": 0.5246335864067078,
+              "hybrid_score": 0.8465140461921692,
+              "reranker_raw_score": 0.9042708873748779,
+              "reranker_score": 0.7118263840675354
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_006",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте с…",
+              "semantic_score": 0.6308267116546631,
+              "semantic_normalized": 0.7989135384559631,
+              "bm25_score": 3.0230772495269775,
+              "bm25_normalized": 0.5054795145988464,
+              "hybrid_score": 0.7255550622940063,
+              "reranker_raw_score": 0.8973891735076904,
+              "reranker_score": 0.7104127407073975
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 28664.882600000055,
+          "metrics": {
+            "hit_rate_at_1": 1.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.5,
+            "mrr_at_3": 1.0,
+            "first_relevant_rank": 1.0
+          },
+          "results": [
+            {
+              "chunk_id": "exam_time_planning_chunk_007",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №3: Робіть перерви між навчанням / Порада №4: Розплануйте свій час на навчання Між сесіями робіть перерви по 5-10 х…",
+              "semantic_score": 0.6906206607818604,
+              "semantic_normalized": 0.953807532787323,
+              "bm25_score": 3.1376302242279053,
+              "bm25_normalized": 0.5246335864067078,
+              "hybrid_score": 0.8465140461921692,
+              "reranker_raw_score": 5.6875,
+              "reranker_score": 0.9966233968734741
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_005",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №2: Відпочивайте та спіть між сесіями навчання / Порада №3: Робіть перерви між навчанням У жовтні 2019 року професо…",
+              "semantic_score": 0.6099354028701782,
+              "semantic_normalized": 0.7447953820228577,
+              "bm25_score": 5.980612754821777,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.8085965514183044,
+              "reranker_raw_score": 5.6875,
+              "reranker_score": 0.9966233968734741
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_004",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №1: Знайдіть свій ідеальний час для навчання / Порада №2: Відпочивайте та спіть між сесіями навчання А можливо, ви…",
+              "semantic_score": 0.6959642171859741,
+              "semantic_normalized": 0.9676498174667358,
+              "bm25_score": 4.656210899353027,
+              "bm25_normalized": 0.7785508036613464,
+              "hybrid_score": 0.9203750491142273,
+              "reranker_raw_score": 5.3125,
+              "reranker_score": 0.9950946569442749
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_id": "q08",
+      "query": "Як контролювати виконання запланованих справ?",
+      "relevant_chunk_ids": [
+        "exam_time_planning_chunk_010",
+        "exam_time_planning_chunk_011",
+        "exam_time_planning_chunk_016"
+      ],
+      "expected_source_file": "data/raw/exam_time_planning.html",
+      "systems": {
+        "semantic": {
+          "latency_ms": 9.10070000009,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.5558112859725952,
+              "semantic_normalized": 1.0
+            },
+            {
+              "chunk_id": "student_time_management_chunk_001",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Вступ / Створіть розклад",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Вступ / Створіть розклад Здатність ефективно управляти часом є надзвичайно важливою навичкою для студентів. Незалежно від того, навчаєтесь ви у вищ…",
+              "semantic_score": 0.5516966581344604,
+              "semantic_normalized": 0.982991635799408
+            },
+            {
+              "chunk_id": "student_time_management_chunk_003",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Використовуйте техніки планування / Заплануйте перерви / Будьте гнучкими",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Використовуйте техніки планування / Заплануйте перерви / Будьте гнучкими Спробуйте різні підходи і визначте, який з них найбільш ефективний для вас…",
+              "semantic_score": 0.5487342476844788,
+              "semantic_normalized": 0.9707460999488831
+            }
+          ]
+        },
+        "hybrid": {
+          "latency_ms": 10.124200000063865,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.5558112859725952,
+              "semantic_normalized": 1.0,
+              "bm25_score": 1.5109926462173462,
+              "bm25_normalized": 0.9717691540718079,
+              "hybrid_score": 0.9929422736167908
+            },
+            {
+              "chunk_id": "student_time_management_chunk_001",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Вступ / Створіть розклад",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Вступ / Створіть розклад Здатність ефективно управляти часом є надзвичайно важливою навичкою для студентів. Незалежно від того, навчаєтесь ви у вищ…",
+              "semantic_score": 0.5516966581344604,
+              "semantic_normalized": 0.982991635799408,
+              "bm25_score": 1.5370275974273682,
+              "bm25_normalized": 0.9885130524635315,
+              "hybrid_score": 0.9843719601631165
+            },
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5294239521026611,
+              "semantic_normalized": 0.8909243941307068,
+              "bm25_score": 1.5548884868621826,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.9181932806968689
+            }
+          ]
+        },
+        "reranked_bge": {
+          "latency_ms": 2046.851300000526,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 0.0,
+            "recall_at_3": 0.0,
+            "mrr_at_3": 0.0,
+            "first_relevant_rank": 0.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5294239521026611,
+              "semantic_normalized": 0.8909243941307068,
+              "bm25_score": 1.5548884868621826,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.9181932806968689,
+              "reranker_raw_score": 0.011397113092243671,
+              "reranker_score": 0.5028492212295532
+            },
+            {
+              "chunk_id": "student_time_management_chunk_002",
+              "document_id": "student_time_management",
+              "source_file": "data/raw/student_time_management.html",
+              "section": "Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування",
+              "preview": "Назва: \"Хакни\" свій час Розділ: Створіть розклад / Пріоритезуйте завдання / Використовуйте техніки планування Визначте фіксований час для кожного заняття і дотримуйтесь його. Розп…",
+              "semantic_score": 0.5558112859725952,
+              "semantic_normalized": 1.0,
+              "bm25_score": 1.5109926462173462,
+              "bm25_normalized": 0.9717691540718079,
+              "hybrid_score": 0.9929422736167908,
+              "reranker_raw_score": 0.004694144241511822,
+              "reranker_score": 0.5011735558509827
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_001",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Вступ / Порада №1: Знайдіть свій ідеальний час для навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Вступ / Порада №1: Знайдіть свій ідеальний час для навчання Планування часу, або ж тайм-менеджмент, допомагає перерозподіл…",
+              "semantic_score": 0.5352182388305664,
+              "semantic_normalized": 0.914875864982605,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.6861568689346313,
+              "reranker_raw_score": 0.003750817384570837,
+              "reranker_score": 0.5009377002716064
+            }
+          ]
+        },
+        "reranked_qwen": {
+          "latency_ms": 28275.114099999882,
+          "metrics": {
+            "hit_rate_at_1": 0.0,
+            "hit_rate_at_3": 1.0,
+            "recall_at_3": 0.6666666666666666,
+            "mrr_at_3": 0.5,
+            "first_relevant_rank": 2.0
+          },
+          "results": [
+            {
+              "chunk_id": "student_daily_routine_chunk_002",
+              "document_id": "student_daily_routine",
+              "source_file": "data/raw/student_daily_routine.html",
+              "section": "КРОК 2 / КРОК 3 / КРОК 4",
+              "preview": "Назва: Основні кроки ефективної організації режиму дня студента Розділ: КРОК 2 / КРОК 3 / КРОК 4 Впродовж кількох днів заповнюйте шаблон режиму дня, аби зрозуміти, на що йде основ…",
+              "semantic_score": 0.5294239521026611,
+              "semantic_normalized": 0.8909243941307068,
+              "bm25_score": 1.5548884868621826,
+              "bm25_normalized": 1.0,
+              "hybrid_score": 0.9181932806968689,
+              "reranker_raw_score": -0.125,
+              "reranker_score": 0.46879062056541443
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_011",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - відсутність зворотного зв'язку – відсутність способу виміряти наш прогрес аб…",
+              "semantic_score": 0.5134860873222351,
+              "semantic_normalized": 0.8250430822372437,
+              "bm25_score": 0.0,
+              "bm25_normalized": 0.0,
+              "hybrid_score": 0.6187822818756104,
+              "reranker_raw_score": -0.125,
+              "reranker_score": 0.46879062056541443
+            },
+            {
+              "chunk_id": "exam_time_planning_chunk_010",
+              "document_id": "exam_time_planning",
+              "source_file": "data/raw/exam_time_planning.html",
+              "section": "Порада №4: Розплануйте свій час на навчання",
+              "preview": "Назва: Як розпланувати час, готуючись до іспиту? Розділ: Порада №4: Розплануйте свій час на навчання - брак мотивації – відсутність мети або стимулу використовувати час із користю…",
+              "semantic_score": 0.4768139123916626,
+              "semantic_normalized": 0.6734537482261658,
+              "bm25_score": 1.5025092363357544,
+              "bm25_normalized": 0.9663131833076477,
+              "hybrid_score": 0.7466685771942139,
+              "reranker_raw_score": -0.75,
+              "reranker_score": 0.32082128524780273
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

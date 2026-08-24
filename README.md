@@ -10,3 +10,5 @@
   LLM-routing, deterministic answers і Telegram `/rate`.
 - `HW_6` — deterministic agentic workflow, typed state, multi-step
   mock tools, повний trace і Telegram `/plan`.
+- `HW_7` — перенесення student-planning workflow на LangGraph: TypedDict
+  state, nodes, conditional edges, три трасування та порівняння з HW6.
