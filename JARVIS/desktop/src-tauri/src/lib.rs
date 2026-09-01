@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::Mutex,
+    thread,
 };
 
 #[cfg(target_os = "windows")]
@@ -126,8 +127,9 @@ fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendProcess, String> {
     command.creation_flags(0x08000000);
     let mut child = command.spawn().map_err(|error| format!("Could not start backend: {error}"))?;
     let stdout = child.stdout.take().ok_or("Backend stdout is unavailable")?;
+    let mut output = BufReader::new(stdout);
     let mut first_line = String::new();
-    BufReader::new(stdout)
+    output
         .read_line(&mut first_line)
         .map_err(|error| format!("Could not read backend bootstrap: {error}"))?;
     let info: BackendInfo = serde_json::from_str(first_line.trim())
@@ -136,6 +138,9 @@ fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendProcess, String> {
         let _ = child.kill();
         return Err("Backend refused non-loopback startup".into());
     }
+    // Keep the pipe open and drain diagnostic output. Closing it immediately
+    // makes the packaged Python server terminate with a broken pipe error.
+    thread::spawn(move || for _ in output.lines() {});
     Ok(BackendProcess { info, child })
 }
 
