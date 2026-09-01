@@ -57,14 +57,26 @@ fn bundled_sidecar(app: &tauri::AppHandle) -> Option<PathBuf> {
     if cfg!(debug_assertions) {
         return None;
     }
-    let resource = app.path().resource_dir().ok()?;
-    [
+    let names = [
         "jarvis-sidecar-x86_64-pc-windows-msvc.exe",
         "jarvis-sidecar.exe",
-    ]
-    .into_iter()
-    .map(|name| resource.join(name))
-    .find(|path| path.is_file())
+    ];
+    if let Ok(resource) = app.path().resource_dir() {
+        if let Some(found) = names
+            .iter()
+            .map(|name| resource.join(name))
+            .find(|path| path.is_file())
+        {
+            return Some(found);
+        }
+    }
+    // `cargo build --release` places the executable and sidecar side-by-side.
+    // Keep this fallback so the desktop shortcut works before an installer is made.
+    let executable_dir = env::current_exe().ok()?.parent()?.to_path_buf();
+    names
+        .iter()
+        .map(|name| executable_dir.join(name))
+        .find(|path| path.is_file())
 }
 
 fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendProcess, String> {
@@ -80,7 +92,7 @@ fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendProcess, String> {
     let mut working_directory = jarvis_root();
     if bundled.is_none() {
         command.args([
-            "-m", "jarvis.cli", "serve", "--with-telegram", "--parent-pid",
+            "-m", "jarvis.cli", "serve", "--parent-pid",
             &std::process::id().to_string(),
         ]);
     } else {
@@ -97,7 +109,6 @@ fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendProcess, String> {
         command.env("JARVIS_STATE_ROOT", &state_root);
         command.args([
             "serve",
-            "--with-telegram",
             "--parent-pid",
             &std::process::id().to_string(),
             "--config-root",
