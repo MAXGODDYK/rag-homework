@@ -11,6 +11,7 @@ from jarvis.database import Database
 from jarvis.ingestion.service import IngestionService
 from jarvis.ingestion.vector_index import VectorIndex
 from jarvis.models import Citation
+from jarvis.sheets_store import GoogleSheetsChunkStore, GoogleSheetsError
 
 
 def _fts_query(question: str) -> str:
@@ -33,6 +34,7 @@ class DynamicRetriever:
         self.embedding_model = settings.embedding_model_name
         self.reranker_model = settings.reranker_model_name
         self._reranker = None
+        self.chunk_store = GoogleSheetsChunkStore(config.project_root)
 
     def _project_root(self, user_id: str, project_id: str | None):
         return IngestionService(self.config, self.database).project_state_root(user_id, project_id)
@@ -95,6 +97,8 @@ class DynamicRetriever:
         )
         if not documents:
             return []
+        if self.chunk_store.status()["connected"]:
+            return self._search_cloud(question, documents, user_id=user_id, source_selector=source_selector, top_k=top_k, candidate_k=candidate_k, rerank=rerank)
         eligible_document_ids = {row["id"] for row in documents}
         eligible_chunk_ids = {
             row["id"]
@@ -181,6 +185,76 @@ class DynamicRetriever:
             for row in ordered:
                 row["reranker_raw_score"] = ranks[row["id"]]
                 row["reranker_score"] = ranks[row["id"]]
+        return ordered[:top_k]
+
+    def _search_cloud(
+        self, question: str, documents: list[dict], *, user_id: str, source_selector: str, top_k: int, candidate_k: int, rerank: bool
+    ) -> list[dict]:
+        """Retrieve IDs locally, then fetch only those chunks from Google Sheets."""
+        del source_selector
+        eligible = {row["id"]: row for row in documents}
+        ranked_ids: list[str] = []
+        seen: set[str] = set()
+        row_maps: dict[str, dict[str, int]] = {}
+        for project_id in dict.fromkeys(row["project_id"] for row in documents):
+            vector = VectorIndex(self._project_root(user_id, project_id) / "index", self.embedding_model)
+            row_maps[str(project_id)] = vector.remote_rows()
+            for chunk_id, _score in vector.search(question, max(100, candidate_k * 5)):
+                if chunk_id not in seen:
+                    seen.add(chunk_id)
+                    ranked_ids.append(chunk_id)
+        if not ranked_ids:
+            return []
+        chunks: list[dict] = []
+        try:
+            for project_id in dict.fromkeys(row["project_id"] for row in documents):
+                chunk_rows = self.chunk_store.fetch_chunks(str(project_id), ranked_ids, row_maps.get(str(project_id), {}))
+                for row in chunk_rows:
+                    document = eligible.get(row["document_id"])
+                    if document:
+                        row.update({"project_id": project_id, "user_id": user_id, "display_name": document["display_name"], "media_type": ""})
+                        chunks.append(row)
+        except GoogleSheetsError:
+            raise
+        by_id = {row["id"]: row for row in chunks}
+        ordered = [by_id[chunk_id] for chunk_id in ranked_ids if chunk_id in by_id][:max(100, candidate_k * 5)]
+        if not ordered:
+            return []
+        # BM25 is intentionally restricted to semantic candidates, so full text
+        # is neither persisted nor loaded for unrelated chunks.
+        terms = re.findall(r"[\w'’-]{2,}", question.casefold())
+        document_frequency = defaultdict(int)
+        token_sets: dict[str, list[str]] = {}
+        for row in ordered:
+            tokens = re.findall(r"[\w'’-]{2,}", row["text"].casefold())
+            token_sets[row["id"]] = tokens
+            for token in set(tokens):
+                document_frequency[token] += 1
+        average_length = max(1, sum(len(tokens) for tokens in token_sets.values()) / len(token_sets))
+        bm25: dict[str, float] = {}
+        for row in ordered:
+            tokens = token_sets[row["id"]]
+            score = 0.0
+            for term in terms:
+                frequency = tokens.count(term)
+                if not frequency:
+                    continue
+                inverse_frequency = math.log((len(ordered) - document_frequency[term] + 0.5) / (document_frequency[term] + 0.5) + 1)
+                score += inverse_frequency * frequency * 2.2 / (frequency + 1.2 * (1 - 0.75 + 0.75 * len(tokens) / average_length))
+            bm25[row["id"]] = score
+        semantic_rank = {row["id"]: position for position, row in enumerate(ordered, start=1)}
+        ordered.sort(key=lambda row: (0.75 / (60 + semantic_rank[row["id"]]) + 0.25 * bm25[row["id"]]), reverse=True)
+        ordered = ordered[:candidate_k]
+        if rerank and ordered:
+            raw_scores = self._load_reranker().predict([(question, row["text"]) for row in ordered])
+            for row, raw in zip(ordered, raw_scores, strict=True):
+                row["reranker_raw_score"] = float(raw)
+                row["reranker_score"] = _sigmoid(float(raw))
+            ordered.sort(key=lambda row: row["reranker_raw_score"], reverse=True)
+        else:
+            for row in ordered:
+                row["reranker_raw_score"] = bm25[row["id"]]
+                row["reranker_score"] = bm25[row["id"]]
         return ordered[:top_k]
 
     @staticmethod

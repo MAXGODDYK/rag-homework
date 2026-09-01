@@ -73,6 +73,13 @@ def create_app(
         runtime.rag.reload_providers()
         return public_settings_status(runtime.config, runtime.rag)
 
+    @app.post("/v1/google-sheets/connect")
+    def connect_google_sheets(_: str = Depends(authorize)):
+        try:
+            return runtime.ingestion.chunk_store.connect()
+        except Exception as error:
+            raise HTTPException(status_code=422, detail="Google Sheets connection could not be created") from error
+
     @app.post("/v1/projects")
     def create_project(payload: ProjectCreate, user_id: str = Depends(authorize)):
         root_path = None

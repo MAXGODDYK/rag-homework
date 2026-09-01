@@ -15,6 +15,8 @@ from .rag_service import DesktopRagService
 
 FIELD_TO_ENV = {
     "ollama_model": "OLLAMA_MODEL",
+    "google_service_account_path": "JARVIS_GOOGLE_SERVICE_ACCOUNT_PATH",
+    "google_owner_email": "JARVIS_GOOGLE_OWNER_EMAIL",
 }
 
 
@@ -31,6 +33,7 @@ def _availability(rag: DesktopRagService) -> dict[str, dict[str, object]]:
 
 
 def public_settings_status(config: JarvisConfig, rag: DesktopRagService) -> dict[str, object]:
+    from .sheets_store import GoogleSheetsChunkStore
     settings = load_settings()
     return {
         "providers": _availability(rag),
@@ -39,6 +42,7 @@ def public_settings_status(config: JarvisConfig, rag: DesktopRagService) -> dict
             "local": settings.ollama_model,
         },
         "storage": str(config.project_root / ".env"),
+        "google_sheets": GoogleSheetsChunkStore(config.project_root).status(),
     }
 
 

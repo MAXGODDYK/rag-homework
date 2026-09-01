@@ -190,6 +190,7 @@ cython_debug/
 
 # JARVIS private configuration and runtime state
 /JARVIS/local_config/constants.py
+/JARVIS/local_config/*.json
 /JARVIS/local_state/
 /JARVIS/jarvis/local_state/
 /JARVIS/.venv/

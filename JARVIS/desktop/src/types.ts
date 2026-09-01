@@ -63,8 +63,11 @@ export type LocalSettingsStatus = {
   configured: Record<string, boolean>;
   models: { local: string };
   storage: string;
+  google_sheets?: { configured: boolean; connected: boolean; spreadsheet_id?: string | null; spreadsheet_url?: string | null };
 };
 
 export type LocalSettingsDraft = {
   ollama_model?: string;
+  google_service_account_path?: string;
+  google_owner_email?: string;
 };

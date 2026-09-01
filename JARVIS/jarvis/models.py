@@ -102,3 +102,5 @@ class LocalSettingsUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ollama_model: str | None = Field(default=None, min_length=1, max_length=256)
+    google_service_account_path: str | None = Field(default=None, min_length=1, max_length=2048)
+    google_owner_email: str | None = Field(default=None, min_length=3, max_length=320)

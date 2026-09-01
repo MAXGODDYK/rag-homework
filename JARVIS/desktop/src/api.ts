@@ -38,6 +38,7 @@ class JarvisApi {
   updateSettings(settings: LocalSettingsDraft) {
     return this.request<LocalSettingsStatus>("/v1/settings", { method: "POST", body: JSON.stringify(settings) });
   }
+  connectGoogleSheets() { return this.request<LocalSettingsStatus["google_sheets"]>("/v1/google-sheets/connect", { method: "POST" }); }
   projects() { return this.request<Project[]>("/v1/projects"); }
   sessions() { return this.request<Session[]>("/v1/sessions"); }
   createProject(name: string, rootPath?: string) {

@@ -8,6 +8,12 @@ HF_TOKEN = ""
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 OLLAMA_MODEL = "qwen3:14b"
 
+# Google Sheets is optional until you connect the chunks database in Settings.
+# Never commit the service-account JSON file or its path for another computer.
+JARVIS_GOOGLE_SERVICE_ACCOUNT_PATH = ""
+JARVIS_GOOGLE_OWNER_EMAIL = ""
+JARVIS_GOOGLE_SPREADSHEET_ID = ""
+
 # Local storage and ingestion quotas. These values are not committed when the
 # example is copied to ignored constants.py.
 JARVIS_MAX_UPLOAD_MB = 100

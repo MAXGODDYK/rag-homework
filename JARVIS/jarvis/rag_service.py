@@ -9,6 +9,7 @@ from .database import Database
 from .models import RagAnswer, SessionPolicy, new_id
 from .providers import ProviderError, TextProvider, build_text_providers
 from .retrieval import DynamicRetriever
+from .sheets_store import GoogleSheetsError
 from .sessions import SessionPolicyStore
 
 
@@ -180,81 +181,90 @@ class DesktopRagService:
 
         self.database.add_message(session_id, "user", question)
         policy = self.policies.get(session_id)
-        rows = self.retriever.search(
-            question,
-            user_id=session["user_id"],
-            project_id=session["project_id"],
-            source_selector=policy.source_selector,
-            top_k=3,
-            candidate_k=20,
-        )
-        citations = DynamicRetriever.citations(rows)
-        best_score = max((float(row.get("reranker_raw_score", 0.0)) for row in rows), default=0.0)
-        if not rows or best_score < self.MINIMUM_RERANKER_RAW_SCORE:
-            return self._store(
-                session=session,
-                answer="I do not have enough relevant information in the selected files to answer this question.",
-                grounded=False,
-                citations=[],
-                provider="evidence-gate",
-                fallback=True,
-                policy=policy,
-                retrieved_chunks=len(rows),
-            )
-
-        chosen = self._provider(policy.provider_profile)
-        if chosen is None:
-            return self._store(
-                session=session,
-                answer=self._extractive_answer(rows, "No language-model provider is configured, so JARVIS shows the retrieved evidence directly."),
-                grounded=True,
-                citations=citations,
-                provider="extractive",
-                fallback=False,
-                policy=policy,
-                retrieved_chunks=len(rows),
-            )
-
-        provider_name, provider = chosen
-        prompt = self._prompt(question, rows)
-        allowed = {row["id"]: row for row in rows}
         try:
-            try:
-                generated = self._parse_payload(provider.generate(prompt), set(allowed))
-            except (ProviderError, RagServiceError):
-                repair = prompt + "\n\nYour previous response violated the JSON/citation contract. Return one corrected JSON object only."
-                generated = self._parse_payload(provider.generate(repair), set(allowed))
-        except (ProviderError, RagServiceError):
-            return self._store(
-                session=session,
-                answer=self._extractive_answer(rows, "The configured provider could not produce a valid grounded answer, so JARVIS shows the retrieved evidence directly."),
-                grounded=True,
-                citations=citations,
-                provider="extractive-fallback",
-                fallback=False,
-                policy=policy,
-                retrieved_chunks=len(rows),
+            rows = self.retriever.search(
+                question,
+                user_id=session["user_id"],
+                project_id=session["project_id"],
+                source_selector=policy.source_selector,
+                top_k=3,
+                candidate_k=20,
             )
+        except GoogleSheetsError as error:
+            raise RagServiceError("Google Sheets is unavailable; JARVIS did not use stale local text") from error
+        try:
+            citations = DynamicRetriever.citations(rows)
+            best_score = max((float(row.get("reranker_raw_score", 0.0)) for row in rows), default=0.0)
+            if not rows or best_score < self.MINIMUM_RERANKER_RAW_SCORE:
+                return self._store(
+                    session=session,
+                    answer="I do not have enough relevant information in the selected files to answer this question.",
+                    grounded=False,
+                    citations=[],
+                    provider="evidence-gate",
+                    fallback=True,
+                    policy=policy,
+                    retrieved_chunks=len(rows),
+                )
 
-        if generated.insufficient_context:
+            chosen = self._provider(policy.provider_profile)
+            if chosen is None:
+                return self._store(
+                    session=session,
+                    answer=self._extractive_answer(rows, "No language-model provider is configured, so JARVIS shows the retrieved evidence directly."),
+                    grounded=True,
+                    citations=citations,
+                    provider="extractive",
+                    fallback=False,
+                    policy=policy,
+                    retrieved_chunks=len(rows),
+                )
+
+            provider_name, provider = chosen
+            prompt = self._prompt(question, rows)
+            allowed = {row["id"]: row for row in rows}
+            try:
+                try:
+                    generated = self._parse_payload(provider.generate(prompt), set(allowed))
+                except (ProviderError, RagServiceError):
+                    repair = prompt + "\n\nYour previous response violated the JSON/citation contract. Return one corrected JSON object only."
+                    generated = self._parse_payload(provider.generate(repair), set(allowed))
+            except (ProviderError, RagServiceError):
+                return self._store(
+                    session=session,
+                    answer=self._extractive_answer(rows, "The configured provider could not produce a valid grounded answer, so JARVIS shows the retrieved evidence directly."),
+                    grounded=True,
+                    citations=citations,
+                    provider="extractive-fallback",
+                    fallback=False,
+                    policy=policy,
+                    retrieved_chunks=len(rows),
+                )
+
+            if generated.insufficient_context:
+                return self._store(
+                    session=session,
+                    answer=generated.answer,
+                    grounded=False,
+                    citations=[],
+                    provider=provider_name,
+                    fallback=True,
+                    policy=policy,
+                    retrieved_chunks=len(rows),
+                )
+            selected_rows = [allowed[chunk_id] for chunk_id in generated.citation_chunk_ids]
             return self._store(
                 session=session,
                 answer=generated.answer,
-                grounded=False,
-                citations=[],
+                grounded=True,
+                citations=DynamicRetriever.citations(selected_rows),
                 provider=provider_name,
-                fallback=True,
+                fallback=False,
                 policy=policy,
                 retrieved_chunks=len(rows),
             )
-        selected_rows = [allowed[chunk_id] for chunk_id in generated.citation_chunk_ids]
-        return self._store(
-            session=session,
-            answer=generated.answer,
-            grounded=True,
-            citations=DynamicRetriever.citations(selected_rows),
-            provider=provider_name,
-            fallback=False,
-            policy=policy,
-            retrieved_chunks=len(rows),
-        )
+        finally:
+            # Candidate text comes from Sheets only for this request.  Nothing
+            # in RagAnswer retains the raw chunks, so clear the temporary set
+            # as soon as citations and the final answer are built.
+            rows.clear()

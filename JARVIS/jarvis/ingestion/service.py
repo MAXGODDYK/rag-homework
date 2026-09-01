@@ -20,6 +20,7 @@ from .chunking import chunk_code, chunk_units
 from .parsers import CODE_EXTENSIONS, DocumentParseError, is_blocked_path, is_probably_text, parse_document
 from .repository import analyze_code, language_for_path
 from .vector_index import VectorIndex
+from jarvis.sheets_store import GoogleSheetsChunkStore, GoogleSheetsError
 
 
 class IngestionError(RuntimeError):
@@ -84,6 +85,12 @@ class IngestionService:
         self.config = config
         self.database = database
         self.embedding_model = load_settings().embedding_model_name
+        self.chunk_store = GoogleSheetsChunkStore(config.project_root)
+        self._pending_archives: list[dict[str, Any]] = []
+
+    @property
+    def cloud_chunks_enabled(self) -> bool:
+        return self.chunk_store.status()["configured"] is True
 
     def _project_name(self, project_id: str | None) -> str:
         if not project_id:
@@ -199,6 +206,25 @@ class IngestionService:
 
     def _archive_document(self, document: dict[str, Any], *, reason: str) -> None:
         """Keep an audit copy that normal retrieval never reads."""
+        if self.cloud_chunks_enabled:
+            project_id = str(document.get("project_id") or "")
+            chunks = self.database.query_all("SELECT * FROM chunks WHERE document_id=? ORDER BY ordinal", (document["id"],))
+            if not chunks and project_id:
+                chunks = self.chunk_store.document_chunks(project_id, document["id"])
+            source_metadata = self._metadata(document)
+            now = utc_now().isoformat()
+            for chunk in chunks:
+                metadata = self._metadata(chunk)
+                self._pending_archives.append({
+                    "project_id": project_id, "chunk_id": chunk.get("id", ""), "document_id": document["id"],
+                    "relative_path": document["relative_path"], "ordinal": chunk.get("ordinal", 0),
+                    "text": chunk.get("text", ""), "metadata_json": json.dumps(metadata, ensure_ascii=False),
+                    "source_sha256": document["sha256"], "indexed_at": source_metadata.get("indexed_at", document["updated_at"]),
+                    "page": chunk.get("page") or "", "heading": chunk.get("heading") or "", "sheet": chunk.get("sheet") or "",
+                    "cell_range": chunk.get("cell_range") or "", "line_start": chunk.get("line_start") or "", "line_end": chunk.get("line_end") or "",
+                    "row_version": document["sha256"], "archived_at": now, "archive_reason": reason,
+                })
+            return
         root = self.project_state_root(str(document["user_id"]), document.get("project_id")) / "history"
         stamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
         stem = re.sub(r"[^A-Za-z0-9._-]+", "_", str(document["relative_path"]))[:120]
@@ -217,6 +243,65 @@ class IngestionService:
             "document": {key: document[key] for key in ("id", "relative_path", "sha256", "status", "original_path")},
             "chunk_count": len(payload),
         })
+
+    def _cloud_file_rows(self, user_id: str, project_id: str | None, revision: str) -> list[dict[str, Any]]:
+        rows = self.database.query_all("SELECT * FROM documents WHERE user_id=? AND project_id IS ? ORDER BY relative_path", (user_id, project_id))
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            metadata = self._metadata(row)
+            result.append({
+                "project_id": project_id or "", "relative_path": row["relative_path"], "document_id": row["id"],
+                "sha256": row["sha256"], "size_bytes": row["size_bytes"], "source_mtime_ns": metadata.get("source_mtime_ns", ""),
+                "indexed_at": metadata.get("indexed_at", row["updated_at"]), "status": row["status"], "revision": revision,
+            })
+        return result
+
+    def _flush_cloud_chunks(self, user_id: str, project_id: str | None) -> None:
+        """Upload DB staging chunks, then remove their local text copies."""
+        if not self.cloud_chunks_enabled or not project_id:
+            return
+        try:
+            if not self.chunk_store.status()["connected"]:
+                self.chunk_store.connect()
+            staged = self.database.query_all("SELECT * FROM chunks WHERE user_id=? AND project_id IS ? ORDER BY document_id, ordinal", (user_id, project_id))
+            if not staged and not self._pending_archives:
+                return
+            revision = utc_now().isoformat()
+            changed: dict[str, list[dict[str, Any]]] = {}
+            for chunk in staged:
+                document = self.database.query_one("SELECT * FROM documents WHERE id=?", (chunk["document_id"],))
+                if not document:
+                    continue
+                metadata = self._metadata(document)
+                changed.setdefault(chunk["document_id"], []).append({
+                    "project_id": project_id, "chunk_id": chunk["id"], "document_id": chunk["document_id"],
+                    "relative_path": document["relative_path"], "ordinal": chunk["ordinal"], "text": chunk["text"],
+                    "metadata_json": chunk["metadata_json"], "source_sha256": document["sha256"],
+                    "indexed_at": metadata.get("indexed_at", document["updated_at"]), "page": chunk["page"] or "",
+                    "heading": chunk["heading"] or "", "sheet": chunk["sheet"] or "", "cell_range": chunk["cell_range"] or "",
+                    "line_start": chunk["line_start"] or "", "line_end": chunk["line_end"] or "", "row_version": document["sha256"],
+                })
+            row_map = self.chunk_store.write_project_state(
+                project_id=project_id, files=self._cloud_file_rows(user_id, project_id, revision),
+                changed_documents=changed, archived=self._pending_archives, revision=revision,
+            )
+            VectorIndex(self.project_state_root(user_id, project_id) / "index", self.embedding_model).set_remote_rows(row_map)
+            with self.database.connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    connection.execute("DELETE FROM chunks_fts WHERE user_id=? AND project_id IS ?", (user_id, project_id))
+                    connection.execute("DELETE FROM chunks WHERE user_id=? AND project_id IS ?", (user_id, project_id))
+                    connection.execute("COMMIT")
+                except Exception:
+                    connection.execute("ROLLBACK")
+                    raise
+            root = self.project_state_root(user_id, project_id)
+            (root / "chunks.jsonl").unlink(missing_ok=True)
+            shutil.rmtree(root / "history", ignore_errors=True)
+            shutil.rmtree(root / "text", ignore_errors=True)
+            self._pending_archives.clear()
+        except GoogleSheetsError as error:
+            raise IngestionError("Google Sheets is unavailable; no local stale text was used") from error
 
     def _project_candidates(self, root_path: Path) -> list[Path]:
         gitignore = root_path / ".gitignore"
@@ -266,9 +351,13 @@ class IngestionService:
                 record = self._mark_rejected(path, user_id, project_id, relative, str(error))
             records.append(record)
             changed = changed or record["status"] in {"ready", "rejected"}
-        if changed:
+        if changed and not self.cloud_chunks_enabled:
             self.rebuild_vector_index(user_id, project_id)
-        self._export_current_artifacts(user_id, project_id)
+        if self.cloud_chunks_enabled:
+            self._flush_cloud_chunks(user_id, project_id)
+            self.rebuild_vector_index(user_id, project_id)
+        else:
+            self._export_current_artifacts(user_id, project_id)
         return records
 
     def import_project(self, root_path: Path, *, user_id: str, project_id: str) -> list[dict]:
@@ -334,9 +423,14 @@ class IngestionService:
             summary.removed += 1
             summary.records.append({"document_id": row["id"], "path": relative, "status": "removed"})
         root = self.project_state_root(user_id, project_id)
-        if summary.changed or not (root / "index" / "faiss.index").exists():
+        if (summary.changed or not (root / "index" / "faiss.index").exists()) and not self.cloud_chunks_enabled:
             self.rebuild_vector_index(user_id, project_id)
-        self._export_current_artifacts(user_id, project_id)
+        if self.cloud_chunks_enabled:
+            self._flush_cloud_chunks(user_id, project_id)
+            if summary.changed or not (root / "index" / "faiss.index").exists():
+                self.rebuild_vector_index(user_id, project_id)
+        else:
+            self._export_current_artifacts(user_id, project_id)
         return summary
 
     def _delete_current_document(self, document_id: str) -> None:
@@ -422,6 +516,16 @@ class IngestionService:
         return {"document_id": document_id, "path": relative_path, "status": "ready", "created": existing is None, "chunks": len(chunks), "symbols": len(symbols), "edges": len(edges)}
 
     def rebuild_vector_index(self, user_id: str, project_id: str | None) -> None:
+        if self.cloud_chunks_enabled and project_id:
+            try:
+                if not self.chunk_store.status()["connected"]:
+                    self.chunk_store.connect()
+                rows, row_map = self.chunk_store.all_project_chunks(project_id)
+            except GoogleSheetsError as error:
+                raise IngestionError("Google Sheets is unavailable; vector cache was not rebuilt") from error
+            root = self.project_state_root(user_id, project_id) / "index"
+            VectorIndex(root, self.embedding_model).rebuild([row["id"] for row in rows], [row["text"] for row in rows], remote_rows=row_map)
+            return
         rows = self.database.query_all("SELECT c.id,c.text FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.user_id=? AND c.project_id IS ? AND d.status='ready' ORDER BY c.document_id,c.ordinal", (user_id, project_id))
         root = self.project_state_root(user_id, project_id) / "index"
         VectorIndex(root, self.embedding_model).rebuild([row["id"] for row in rows], [row["text"] for row in rows])
@@ -443,5 +547,8 @@ class IngestionService:
             pass
         else:
             original.unlink(missing_ok=True)
+        if self.cloud_chunks_enabled:
+            self._flush_cloud_chunks(user_id, project_id)
         self.rebuild_vector_index(user_id, project_id)
-        self._export_current_artifacts(user_id, project_id)
+        if not self.cloud_chunks_enabled:
+            self._export_current_artifacts(user_id, project_id)

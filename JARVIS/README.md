@@ -51,6 +51,33 @@ local_state/projects/<project-name>--<short-id>/
 бути процитований. Перед відповіддю інтерфейс показує результат: перевірка,
 відсутність змін, кількість оновлених/видалених або відхилених файлів.
 
+## Google Sheets chunks database
+
+Після підключення Google Sheets стає **єдиною постійною текстовою базою**:
+`Chunks_Current` містить актуальні chunks, `Chunks_History` — попередні
+версії, `Files` — metadata файлів, а `Meta` — revision проєкту. Локально після
+успішної міграції залишаються лише embeddings, FAISS-index та мапа
+`chunk_id → Google Sheets row`; повний текст chunks, FTS, `chunks.jsonl`,
+extracted text і local history очищаються.
+
+Під час питання FAISS повертає до 100 IDs, JARVIS завантажує з Google Sheets
+лише ці рядки, застосовує BM25 і BGE reranking, а після відповіді звільняє
+candidate text з RAM. Якщо Sheets недоступні, JARVIS не використовує старі
+локальні chunks і повертає безпечну помилку.
+
+### One-time setup
+
+1. У Google Cloud створіть service account, увімкніть **Google Sheets API** і
+   **Google Drive API**, а JSON-ключ збережіть у приватній папці на ПК.
+2. У Settings введіть шлях до JSON і свій Google e-mail.
+3. Натисніть **Create / connect JARVIS DB**. JARVIS створить `JARVIS DB` та
+   надасть вашому e-mail Editor-доступ.
+4. Наступна синхронізація звірить ID/SHA/count перед очищенням локального
+   text staging.
+
+JSON service-account, `.env`, локальні індекси та текстові artifacts не
+потрапляють у Git. Не надсилайте JSON-ключ у чат і не додавайте його до Git.
+
 Файли та їхні інструкції завжди трактуються як **untrusted context**. Модель
 може процитувати лише chunks, які JARVIS фактично отримав у retrieval.
 
