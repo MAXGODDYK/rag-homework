@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from enum import StrEnum
-from typing import Any, Literal
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,42 +15,11 @@ def new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
 
 
-class AgentMode(StrEnum):
-    SAFE = "safe"
-    AUTONOMOUS = "autonomous"
-
-
-class FileScope(StrEnum):
-    WORKSPACE = "workspace"
-    ROOTS = "roots"
-    COMPUTER = "computer"
-
-
-class RiskLevel(StrEnum):
-    READ = "read"
-    CALCULATE = "calculate"
-    WRITE = "write"
-    EXECUTE = "execute"
-    EXTERNAL_MUTATION = "external_mutation"
-    HIGH_RISK = "high_risk"
-
-
-class ApprovalStatus(StrEnum):
-    PENDING = "pending"
-    BUTTON_CONFIRMED = "button_confirmed"
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
-    EXPIRED = "expired"
-    EXECUTED = "executed"
-
-
 class SessionPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: AgentMode = AgentMode.SAFE
-    scope: FileScope = FileScope.WORKSPACE
     provider_profile: Literal[
-        "auto", "local-agent", "local-grounded", "remote-strong"
+        "auto", "freemodel", "openai", "extractive"
     ] = "auto"
     source_selector: str = "auto"
 
@@ -72,35 +40,20 @@ class Citation(BaseModel):
     score: float | None = None
 
 
-class ToolCallRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class RagAnswer(BaseModel):
+    """Grounded answer returned by the desktop-only RAG service."""
 
-    tool_name: str = Field(min_length=1, max_length=128)
-    arguments: dict[str, Any]
-    rationale: str = ""
-
-
-class AgentDecision(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    action: Literal["tool", "final"]
-    tool: ToolCallRequest | None = None
-    answer: str | None = None
-    grounded: bool = False
-    citations: list[Citation] = Field(default_factory=list)
-
-
-class AgentAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     session_id: str
     message_id: str
     answer: str
     grounded: bool
-    citations: list[Citation]
+    citations: list[Citation] = Field(default_factory=list)
     provider: str
-    tool_run_ids: list[str] = Field(default_factory=list)
-    pending_approval_id: str | None = None
+    fallback: bool = False
+    source_selector: str = "auto"
+    retrieved_chunks: int = 0
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -111,14 +64,9 @@ class Event(BaseModel):
         "chat.started",
         "chat.delta",
         "retrieval.completed",
-        "tool.proposed",
-        "approval.required",
-        "tool.started",
-        "tool.output",
         "file.changed",
         "chat.completed",
         "chat.failed",
-        "job.updated",
     ]
     session_id: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -146,12 +94,6 @@ class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=100_000)
 
 
-class ApprovalConfirm(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    local_code: str | None = Field(default=None, min_length=6, max_length=16)
-
-
 class LocalSettingsUpdate(BaseModel):
     """Write-only local settings accepted from the owner desktop interface."""
 
@@ -159,22 +101,12 @@ class LocalSettingsUpdate(BaseModel):
 
     freemodel_api_key: str | None = Field(default=None, max_length=4096)
     openai_api_key: str | None = Field(default=None, max_length=4096)
-    telegram_bot_token: str | None = Field(default=None, max_length=4096)
     hf_token: str | None = Field(default=None, max_length=4096)
-    web_search_api_key: str | None = Field(default=None, max_length=4096)
-    google_access_token: str | None = Field(default=None, max_length=8192)
-    microsoft_access_token: str | None = Field(default=None, max_length=8192)
-    local_adapter_path: str | None = Field(default=None, max_length=2048)
     freemodel_model: str | None = Field(default=None, max_length=256)
     clear: list[
         Literal[
             "freemodel_api_key",
             "openai_api_key",
-            "telegram_bot_token",
             "hf_token",
-            "web_search_api_key",
-            "google_access_token",
-            "microsoft_access_token",
-            "local_adapter_path",
         ]
-    ] = Field(default_factory=list, max_length=8)
+    ] = Field(default_factory=list, max_length=3)

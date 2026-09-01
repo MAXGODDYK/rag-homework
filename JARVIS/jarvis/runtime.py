@@ -2,16 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .agent import AgentService
-from .approvals import ApprovalManager
 from .config import JarvisConfig, load_jarvis_config
 from .database import Database
 from .events import EventBus
 from .ingestion import IngestionService
+from .rag_service import DesktopRagService
 from .retrieval import DynamicRetriever
-from .security import SessionPolicyStore
-from .tool_runner import ToolRunner
-from .tools import ToolRegistry, build_default_registry
+from .sessions import SessionPolicyStore
 
 
 @dataclass
@@ -20,12 +17,9 @@ class Runtime:
     database: Database
     events: EventBus
     policies: SessionPolicyStore
-    approvals: ApprovalManager
-    registry: ToolRegistry
-    runner: ToolRunner
     ingestion: IngestionService
     retriever: DynamicRetriever
-    agent: AgentService
+    rag: DesktopRagService
 
 
 def build_runtime() -> Runtime:
@@ -34,17 +28,10 @@ def build_runtime() -> Runtime:
     database.initialize()
     events = EventBus()
     policies = SessionPolicyStore()
-    approvals = ApprovalManager(database)
-    registry = build_default_registry(config)
-    runner = ToolRunner(database, registry, approvals)
     ingestion = IngestionService(config, database)
     retriever = DynamicRetriever(config, database)
-    agent = AgentService(
-        config=config,
+    rag = DesktopRagService(
         database=database,
-        registry=registry,
-        runner=runner,
-        approvals=approvals,
         retriever=retriever,
         policies=policies,
     )
@@ -54,10 +41,7 @@ def build_runtime() -> Runtime:
         database=database,
         events=events,
         policies=policies,
-        approvals=approvals,
-        registry=registry,
-        runner=runner,
         ingestion=ingestion,
         retriever=retriever,
-        agent=agent,
+        rag=rag,
     )

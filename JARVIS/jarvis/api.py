@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import os
 import secrets
-import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,53 +10,25 @@ import aiofiles
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from .agent import AgentError
-from .approvals import ApprovalError
-from .models import ApprovalConfirm, Event, LocalSettingsUpdate, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy
+from .models import Event, LocalSettingsUpdate, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy
+from .rag_service import RagServiceError
 from .runtime import Runtime, build_runtime
 from .settings_store import public_settings_status, update_local_settings
-from .tools import ToolExecutionError
 
 
 def create_app(
     runtime: Runtime | None = None,
     ipc_token: str | None = None,
-    *,
-    enable_telegram: bool = False,
 ) -> FastAPI:
     runtime = runtime or build_runtime()
     token = ipc_token or os.getenv("JARVIS_IPC_TOKEN") or secrets.token_urlsafe(32)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        telegram_application = None
-        if enable_telegram:
-            from scripts.telegram_bot.bot import build_application
-
-            try:
-                telegram_application = build_application(runtime)
-                await telegram_application.initialize()
-                await telegram_application.start()
-                if telegram_application.updater is not None:
-                    await telegram_application.updater.start_polling(drop_pending_updates=True)
-                application.state.telegram = telegram_application
-                application.state.telegram_status = "running"
-            except Exception as error:
-                telegram_application = None
-                application.state.telegram_status = (
-                    f"disabled: {type(error).__name__}"
-                )
-        try:
-            yield
-        finally:
-            if telegram_application is not None:
-                if telegram_application.updater is not None:
-                    await telegram_application.updater.stop()
-                await telegram_application.stop()
-                await telegram_application.shutdown()
+        yield
 
     app = FastAPI(
-        title="JARVIS Local Agent API",
+        title="JARVIS Desktop RAG API",
         version="0.1.0",
         lifespan=lifespan,
     )
@@ -87,23 +58,18 @@ def create_app(
             "version": app.version,
             "database": str(runtime.config.database_path),
             "config_root": str(runtime.config.project_root),
-            "tools": len(runtime.registry.names()),
-            "telegram": getattr(app.state, "telegram_status", "not requested"),
+            "mode": "desktop-rag-only",
         }
-
-    @app.get("/v1/tools")
-    def tools(_: str = Depends(authorize)):
-        return runtime.registry.catalog()
 
     @app.get("/v1/settings")
     def local_settings(_: str = Depends(authorize)):
-        return public_settings_status(runtime.config, runtime.agent)
+        return public_settings_status(runtime.config, runtime.rag)
 
     @app.post("/v1/settings")
     def save_local_settings(payload: LocalSettingsUpdate, _: str = Depends(authorize)):
         update_local_settings(runtime.config, payload)
-        runtime.agent.reload_providers()
-        return public_settings_status(runtime.config, runtime.agent)
+        runtime.rag.reload_providers()
+        return public_settings_status(runtime.config, runtime.rag)
 
     @app.post("/v1/projects")
     def create_project(payload: ProjectCreate, user_id: str = Depends(authorize)):
@@ -169,21 +135,25 @@ def create_app(
             raise HTTPException(status_code=404, detail="Session not found")
         await runtime.events.publish(user_id, Event(type="chat.started", session_id=session_id))
         try:
-            answer = await asyncio.to_thread(runtime.agent.answer, session_id, payload.content)
-        except (AgentError, ToolExecutionError) as error:
+            answer = await asyncio.to_thread(runtime.rag.answer, session_id, payload.content)
+        except RagServiceError as error:
             await runtime.events.publish(
                 user_id, Event(type="chat.failed", session_id=session_id, payload={"error": str(error)})
             )
             raise HTTPException(status_code=422, detail=str(error)) from error
-        if answer.pending_approval_id:
-            await runtime.events.publish(
-                user_id,
-                Event(
-                    type="approval.required",
-                    session_id=session_id,
-                    payload=answer.model_dump(mode="json"),
-                ),
-            )
+        await runtime.events.publish(
+            user_id,
+            Event(
+                type="retrieval.completed",
+                session_id=session_id,
+                payload={
+                    "source_selector": answer.source_selector,
+                    "retrieved_chunks": answer.retrieved_chunks,
+                    "citations": len(answer.citations),
+                    "fallback": answer.fallback,
+                },
+            ),
+        )
         for offset in range(0, len(answer.answer), 96):
             await runtime.events.publish(
                 user_id,
@@ -313,44 +283,6 @@ def create_app(
             return {"deleted": document_id}
         except Exception as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
-
-    @app.post("/v1/approvals/{approval_id}/confirm")
-    def confirm_approval(
-        approval_id: str,
-        payload: ApprovalConfirm,
-        _: str = Depends(authorize),
-    ):
-        try:
-            approval = runtime.approvals.get(approval_id)
-            if approval["status"] == "pending":
-                if payload.local_code:
-                    raise ApprovalError("Confirm the action before submitting its local code")
-                updated = runtime.approvals.confirm_button(approval_id)
-                if updated["status"] == "confirmed":
-                    outcome, answer = runtime.agent.execute_confirmed(approval_id)
-                    return {"approval": runtime.approvals.get(approval_id), "tool_result": outcome.result, "answer": answer}
-                return {"approval": updated, "requires_local_code": True}
-            if payload.local_code:
-                runtime.approvals.confirm_code(approval_id, payload.local_code)
-                outcome, answer = runtime.agent.execute_confirmed(approval_id)
-                return {"approval": runtime.approvals.get(approval_id), "tool_result": outcome.result, "answer": answer}
-            raise ApprovalError("Local approval code is required")
-        except (ApprovalError, AgentError, ToolExecutionError) as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
-
-    @app.get("/v1/approvals/{approval_id}/local-code")
-    def local_code(approval_id: str, _: str = Depends(authorize)):
-        try:
-            return {"approval_id": approval_id, "local_code": runtime.agent.local_approval_code(approval_id)}
-        except AgentError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
-
-    @app.post("/v1/approvals/{approval_id}/cancel")
-    def cancel_approval(approval_id: str, _: str = Depends(authorize)):
-        try:
-            return runtime.approvals.cancel(approval_id)
-        except ApprovalError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.websocket("/v1/events")
     async def events(websocket: WebSocket, token_query: str = Query(alias="token")):

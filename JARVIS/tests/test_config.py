@@ -28,13 +28,11 @@ def test_local_constants_are_used_when_environment_is_absent(
     freemodel_key_name = "FREEMODEL_API_KEY"
     constants_path.write_text(
         'OPENAI_API_KEY = "local-key"\n'
-        f'{freemodel_key_name} = "freemodel-local-key"\n'
-        'LOCAL_ADAPTER_PATH = r"C:\\\\adapter"\n',
+        f'{freemodel_key_name} = "freemodel-local-key"\n',
         encoding="utf-8",
     )
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("FREEMODEL_API_KEY", raising=False)
-    monkeypatch.delenv("LOCAL_ADAPTER_PATH", raising=False)
     monkeypatch.setattr(
         settings_module,
         "LOCAL_CONSTANTS_PATH",
@@ -45,7 +43,6 @@ def test_local_constants_are_used_when_environment_is_absent(
 
     assert settings.openai_api_key == "local-key"
     assert settings.freemodel_api_key == "freemodel-local-key"
-    assert settings.local_adapter_path == Path(r"C:\adapter")
 
 
 def test_public_defaults_are_used_without_private_values(
@@ -64,5 +61,5 @@ def test_public_defaults_are_used_without_private_values(
     assert settings.openai_model == "gpt-4.1-mini"
     assert settings.freemodel_base_url == "https://api.freemodel.dev/v1"
     assert settings.freemodel_model == "auto"
-    assert settings.local_model_name == "Qwen/Qwen3-4B-Instruct-2507"
-    assert settings.telegram_network_timeout_seconds == 30.0
+    assert settings.embedding_model_name == "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    assert settings.reranker_model_name == "BAAI/bge-reranker-v2-m3"

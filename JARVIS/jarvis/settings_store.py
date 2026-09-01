@@ -8,28 +8,23 @@ from dotenv import dotenv_values
 
 from config.settings import load_settings
 
-from .agent import AgentService
 from .config import JarvisConfig
 from .models import LocalSettingsUpdate
+from .rag_service import DesktopRagService
 
 
 FIELD_TO_ENV = {
     "freemodel_api_key": "FREEMODEL_API_KEY",
     "openai_api_key": "OPENAI_API_KEY",
-    "telegram_bot_token": "TELEGRAM_BOT_TOKEN",
     "hf_token": "HF_TOKEN",
-    "web_search_api_key": "WEB_SEARCH_API_KEY",
-    "google_access_token": "GOOGLE_ACCESS_TOKEN",
-    "microsoft_access_token": "MICROSOFT_ACCESS_TOKEN",
-    "local_adapter_path": "LOCAL_ADAPTER_PATH",
     "freemodel_model": "FREEMODEL_MODEL",
 }
 
 
-def _availability(agent: AgentService) -> dict[str, dict[str, object]]:
+def _availability(rag: DesktopRagService) -> dict[str, dict[str, object]]:
     result: dict[str, dict[str, object]] = {}
-    for name in ("freemodel", "openai", "local", "local-agent"):
-        provider = agent.providers.get(name)
+    for name in ("freemodel", "openai"):
+        provider = rag.providers.get(name)
         if provider is None:
             result[name] = {"available": False, "reason": "not registered"}
             continue
@@ -38,24 +33,18 @@ def _availability(agent: AgentService) -> dict[str, dict[str, object]]:
     return result
 
 
-def public_settings_status(config: JarvisConfig, agent: AgentService) -> dict[str, object]:
+def public_settings_status(config: JarvisConfig, rag: DesktopRagService) -> dict[str, object]:
     settings = load_settings()
     return {
-        "providers": _availability(agent),
+        "providers": _availability(rag),
         "configured": {
             "freemodel_api_key": bool(settings.freemodel_api_key),
             "openai_api_key": bool(settings.openai_api_key),
-            "telegram_bot_token": bool(settings.telegram_bot_token),
             "hf_token": bool(settings.hf_token),
-            "web_search_api_key": bool(config.web_search_api_key),
-            "google_access_token": bool(config.google_access_token),
-            "microsoft_access_token": bool(config.microsoft_access_token),
-            "local_adapter_path": bool(settings.local_adapter_path),
         },
         "models": {
             "freemodel": settings.freemodel_model,
             "openai": settings.openai_model,
-            "local": settings.local_model_name,
         },
         "storage": str(config.project_root / ".env"),
     }

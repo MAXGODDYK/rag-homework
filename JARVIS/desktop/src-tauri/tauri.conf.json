@@ -37,8 +37,8 @@
     ],
     "externalBin": ["binaries/jarvis-sidecar"],
     "targets": ["nsis", "msi"],
-    "shortDescription": "Local AI agent with dynamic RAG and approval-aware tools",
-    "longDescription": "JARVIS combines a local desktop interface, document and repository retrieval, Telegram, and a typed tool system with explicit permissions.",
+    "shortDescription": "Local desktop RAG for documents and repositories",
+    "longDescription": "JARVIS combines a local desktop interface with document and repository retrieval, grounded answers and source citations.",
     "windows": {
       "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
       "nsis": { "installMode": "currentUser" }

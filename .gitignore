@@ -193,6 +193,7 @@ cython_debug/
 /JARVIS/local_state/
 /JARVIS/jarvis/local_state/
 /JARVIS/.venv/
+/JARVIS/.pytest_cache/
 /JARVIS/desktop/node_modules/
 /JARVIS/desktop/dist/
 /JARVIS/desktop/*.tsbuildinfo
@@ -200,7 +201,7 @@ cython_debug/
 /JARVIS/desktop/vite.config.d.ts
 /JARVIS/desktop/src-tauri/target/
 /JARVIS/desktop/src-tauri/gen/
-/JARVIS/desktop/src-tauri/binaries/*.exe
+/JARVIS/desktop/src-tauri/binaries/
 /JARVIS/desktop/src-tauri/icons/android/
 /JARVIS/desktop/src-tauri/icons/ios/
 /JARVIS/build/

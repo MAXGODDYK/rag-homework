@@ -37,6 +37,36 @@ class DynamicRetriever:
     def _project_root(self, user_id: str, project_id: str | None):
         return IngestionService(self.config, self.database).project_state_root(user_id, project_id)
 
+    def _eligible_documents(
+        self,
+        *,
+        user_id: str,
+        project_id: str | None,
+        source_selector: str,
+    ) -> list[dict]:
+        """Resolve corpus metadata before lexical, vector and reranker scoring.
+
+        The previous prototype filtered explicit files only after the global
+        candidate set had already been selected. That could return too few
+        results from the selected file and made the file selector misleading.
+        """
+        if source_selector == "all":
+            query = "SELECT id,project_id,relative_path,display_name FROM documents WHERE user_id=? AND status='ready'"
+            parameters: tuple[object, ...] = (user_id,)
+        else:
+            query = "SELECT id,project_id,relative_path,display_name FROM documents WHERE user_id=? AND project_id IS ? AND status='ready'"
+            parameters = (user_id, project_id)
+        rows = self.database.query_all(query, parameters)
+        if source_selector not in {"auto", "all"}:
+            expected = source_selector.casefold()
+            rows = [
+                row
+                for row in rows
+                if row["relative_path"].casefold() == expected
+                or row["display_name"].casefold() == expected
+            ]
+        return rows
+
     def _load_reranker(self):
         if self._reranker is None:
             from sentence_transformers import CrossEncoder
@@ -55,53 +85,72 @@ class DynamicRetriever:
         candidate_k: int = 20,
         rerank: bool = True,
     ) -> list[dict]:
+        documents = self._eligible_documents(
+            user_id=user_id,
+            project_id=project_id,
+            source_selector=source_selector,
+        )
+        if not documents:
+            return []
+        eligible_document_ids = {row["id"] for row in documents}
+        eligible_chunk_ids = {
+            row["id"]
+            for row in self.database.query_all(
+                "SELECT id FROM chunks WHERE user_id=? AND document_id IN ("
+                + ",".join("?" for _ in eligible_document_ids)
+                + ")",
+                (user_id, *eligible_document_ids),
+            )
+        }
+        if not eligible_chunk_ids:
+            return []
+
         ranks: dict[str, float] = defaultdict(float)
         fts = _fts_query(question)
         if fts:
             try:
-                if source_selector == "all":
-                    lexical = self.database.query_all(
-                        "SELECT chunk_id,bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH ? AND user_id=? ORDER BY score LIMIT ?",
-                        (fts, user_id, candidate_k),
-                    )
-                else:
-                    lexical = self.database.query_all(
-                        "SELECT chunk_id,bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH ? AND user_id=? AND project_id=? ORDER BY score LIMIT ?",
-                        (fts, user_id, project_id or "", candidate_k),
-                    )
+                placeholders = ",".join("?" for _ in eligible_chunk_ids)
+                lexical = self.database.query_all(
+                    "SELECT chunk_id,bm25(chunks_fts) AS score FROM chunks_fts "
+                    "WHERE chunks_fts MATCH ? AND user_id=? AND chunk_id IN ("
+                    + placeholders
+                    + ") ORDER BY score LIMIT ?",
+                    (fts, user_id, *eligible_chunk_ids, candidate_k),
+                )
             except Exception:
                 lexical = []
             for rank, row in enumerate(lexical, start=1):
                 ranks[row["chunk_id"]] += 1 / (60 + rank)
 
-        semantic_projects = [project_id]
-        if source_selector == "all":
-            semantic_projects = [
-                row["id"] for row in self.database.query_all(
-                    "SELECT id FROM projects WHERE user_id=?", (user_id,)
-                )
-            ]
+        semantic_projects = list(dict.fromkeys(row["project_id"] for row in documents))
         for semantic_project in semantic_projects:
             vector = VectorIndex(
                 self._project_root(user_id, semantic_project) / "index",
                 self.embedding_model,
             )
+            # Fetch all vectors for this project, then apply the metadata
+            # restriction before assigning reciprocal-rank positions.
+            semantic_limit = max(candidate_k, vector.count())
             for rank, (chunk_id, _score) in enumerate(
-                vector.search(question, candidate_k), start=1
+                (item for item in vector.search(question, semantic_limit) if item[0] in eligible_chunk_ids), start=1
             ):
+                if rank > candidate_k:
+                    break
                 ranks[chunk_id] += 1 / (60 + rank)
 
         terms = re.findall(r"[A-Za-z_$][\w$]{2,}", question)[:20]
         if project_id and terms:
             placeholders = ",".join("?" for _ in terms)
             symbols = self.database.query_all(
-                f"SELECT DISTINCT document_id FROM symbols WHERE project_id=? AND lower(name) IN ({placeholders}) LIMIT ?",
-                (project_id, *[term.lower() for term in terms], candidate_k),
+                f"SELECT DISTINCT document_id FROM symbols WHERE project_id=? AND document_id IN ({','.join('?' for _ in eligible_document_ids)}) AND lower(name) IN ({placeholders}) LIMIT ?",
+                (project_id, *eligible_document_ids, *[term.lower() for term in terms], candidate_k),
             )
             for symbol_rank, symbol in enumerate(symbols, start=1):
                 rows = self.database.query_all(
-                    "SELECT id FROM chunks WHERE document_id=? ORDER BY ordinal LIMIT 3",
-                    (symbol["document_id"],),
+                    "SELECT id FROM chunks WHERE document_id=? AND id IN ("
+                    + ",".join("?" for _ in eligible_chunk_ids)
+                    + ") ORDER BY ordinal LIMIT 3",
+                    (symbol["document_id"], *eligible_chunk_ids),
                 )
                 for row in rows:
                     ranks[row["id"]] += 0.5 / (60 + symbol_rank)
@@ -110,18 +159,13 @@ class DynamicRetriever:
         if not candidate_ids:
             return []
         placeholders = ",".join("?" for _ in candidate_ids)
-        scope_clause = "c.user_id=?" if source_selector == "all" else "c.user_id=? AND c.project_id IS ?"
-        parameters = (*candidate_ids, user_id) if source_selector == "all" else (*candidate_ids, user_id, project_id)
+        scope_clause = "c.user_id=?"
+        parameters = (*candidate_ids, user_id)
         rows = self.database.query_all(
             f"SELECT c.*,d.display_name,d.relative_path,d.media_type FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.id IN ({placeholders}) AND {scope_clause}",
             parameters,
         )
-        if source_selector not in {"auto", "all"}:
-            rows = [
-                row for row in rows
-                if row["relative_path"].casefold() == source_selector.casefold()
-                or row["display_name"].casefold() == source_selector.casefold()
-            ]
+        rows = [row for row in rows if row["document_id"] in eligible_document_ids]
         by_id = {row["id"]: row for row in rows}
         ordered = [by_id[chunk_id] for chunk_id in candidate_ids if chunk_id in by_id]
         if rerank and ordered:

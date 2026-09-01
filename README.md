@@ -8,8 +8,11 @@
   Qwen, Telegram-бот і перевірка JSON/citations.
 - `HW_5` — allowlisted external tool офіційного курсу НБУ,
   LLM-routing, deterministic answers і Telegram `/rate`.
-- `JARVIS` — окремий експериментальний desktop AI-agent: dynamic
-  document/repository RAG, Tauri/React, typed tools, approvals,
-  Telegram uploads і local FastAPI sidecar. Здаваний HW5 збережений у
-  гілці `HW_5`; JARVIS розробляється у
-  `codex/HW_5-more-functionality`.
+- `JARVIS` — фінальний desktop RAG-проєкт: локальний Tauri/React interface,
+  dynamic document/repository ingestion, FTS5 + FAISS + BGE reranking,
+  scope-aware metadata filtering і citations. Telegram, agent tools та
+  external integrations свідомо прибрані; використовується лише графічний
+  доступ з локального ПК.
+
+Фінальне технічне доопрацювання описано у
+[FINAL_IMPROVEMENT.md](FINAL_IMPROVEMENT.md).

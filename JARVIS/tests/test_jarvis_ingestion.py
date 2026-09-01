@@ -17,7 +17,7 @@ from jarvis.ingestion.service import IngestionService
 from jarvis.ingestion.vector_index import VectorIndex
 from jarvis.retrieval import DynamicRetriever
 
-from test_jarvis_core import make_config, make_database
+from helpers import make_config, make_database
 
 
 def test_docx_heading_and_text_are_preserved(tmp_path: Path) -> None:

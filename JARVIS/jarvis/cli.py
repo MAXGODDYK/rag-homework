@@ -31,24 +31,17 @@ from .runtime import build_runtime
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(prog="jarvis", description="JARVIS local agent administrator")
+    root = argparse.ArgumentParser(prog="jarvis", description="JARVIS desktop RAG backend")
     commands = root.add_subparsers(dest="command", required=True)
     commands.add_parser("migrate")
     commands.add_parser("status")
-    commands.add_parser("users")
-    commands.add_parser("roots")
-    commands.add_parser("approvals")
     commands.add_parser("emergency-shutdown")
     serve = commands.add_parser("serve")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=0)
-    serve.add_argument("--with-telegram", action="store_true")
     serve.add_argument("--parent-pid", type=int)
     serve.add_argument("--config-root")
     serve.add_argument("--state-root")
-    add_user = commands.add_parser("add-user")
-    add_user.add_argument("user_id")
-    add_user.add_argument("display_name")
     add_project = commands.add_parser("add-project")
     add_project.add_argument("name")
     add_project.add_argument("root_path")
@@ -58,8 +51,6 @@ def parser() -> argparse.ArgumentParser:
     reindex = commands.add_parser("reindex")
     reindex.add_argument("project_id")
     reindex.add_argument("--user-id", default="desktop-owner")
-    local_code = commands.add_parser("approval-code")
-    local_code.add_argument("approval_id")
     return root
 
 
@@ -90,19 +81,13 @@ def main() -> int:
             json.dumps(
                 {
                     "database": str(runtime.config.database_path),
-                    "tools": runtime.registry.catalog(),
+                    "mode": "desktop-rag-only",
                     "free_gb": round(__import__("shutil").disk_usage(runtime.config.project_root).free / 1024**3, 2),
                 },
                 ensure_ascii=False,
                 indent=2,
             )
         )
-    elif args.command == "users":
-        print(json.dumps(runtime.database.query_all("SELECT * FROM users ORDER BY created_at"), ensure_ascii=False, indent=2))
-    elif args.command == "roots":
-        print(json.dumps([str(path) for path in runtime.config.allowed_roots], ensure_ascii=False, indent=2))
-    elif args.command == "approvals":
-        print(json.dumps(runtime.database.query_all("SELECT id,session_id,status,high_risk,preview,expires_at FROM approvals ORDER BY created_at DESC"), ensure_ascii=False, indent=2))
     elif args.command == "emergency-shutdown":
         pid_path = runtime.config.state_root / "backend.pid"
         if not pid_path.exists():
@@ -138,16 +123,13 @@ def main() -> int:
         pid_path.write_text(str(os.getpid()), encoding="ascii")
         try:
             uvicorn.run(
-                create_app(runtime, token, enable_telegram=args.with_telegram),
+                create_app(runtime, token),
                 host=args.host,
                 port=port,
                 log_level="info",
             )
         finally:
             pid_path.unlink(missing_ok=True)
-    elif args.command == "add-user":
-        runtime.database.ensure_user(args.user_id, args.display_name)
-        print(f"User ready: {args.user_id}")
     elif args.command == "add-project":
         path = Path(args.root_path).expanduser().resolve()
         if not path.is_dir():
@@ -167,8 +149,6 @@ def main() -> int:
     elif args.command == "reindex":
         runtime.ingestion.rebuild_vector_index(args.user_id, args.project_id)
         print(f"Reindexed project: {args.project_id}")
-    elif args.command == "approval-code":
-        print(runtime.agent.local_approval_code(args.approval_id))
     return 0
 
 

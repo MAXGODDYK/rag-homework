@@ -35,15 +35,16 @@ export type Citation = {
   score?: number | null;
 };
 
-export type AgentAnswer = {
+export type RagAnswer = {
   session_id: string;
   message_id: string;
   answer: string;
   grounded: boolean;
   citations: Citation[];
   provider: string;
-  tool_run_ids: string[];
-  pending_approval_id?: string | null;
+  fallback: boolean;
+  source_selector: string;
+  retrieved_chunks: number;
 };
 
 export type Message = {
@@ -60,18 +61,13 @@ export type BackendInfo = { host: string; port: number; ipc_token: string };
 export type LocalSettingsStatus = {
   providers: Record<string, { available: boolean; reason: string }>;
   configured: Record<string, boolean>;
-  models: { freemodel: string; openai: string; local: string };
+  models: { freemodel: string; openai: string };
   storage: string;
 };
 
 export type LocalSettingsDraft = {
   freemodel_api_key?: string;
   openai_api_key?: string;
-  telegram_bot_token?: string;
   hf_token?: string;
-  web_search_api_key?: string;
-  google_access_token?: string;
-  microsoft_access_token?: string;
-  local_adapter_path?: string;
   freemodel_model?: string;
 };

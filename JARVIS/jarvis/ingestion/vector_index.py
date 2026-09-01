@@ -106,3 +106,14 @@ class VectorIndex:
             for score, position in zip(scores[0], positions[0], strict=True)
             if position >= 0
         ]
+
+    def count(self) -> int:
+        """Return the indexed vector count without loading an embedding model."""
+        manifest_path = self.root / "manifest.json"
+        if not manifest_path.exists():
+            return 0
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            return max(0, int(manifest.get("count", 0)))
+        except (OSError, ValueError, json.JSONDecodeError):
+            return 0

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AgentAnswer, BackendInfo, DocumentFile, LocalSettingsDraft, LocalSettingsStatus, Message, Project, Session } from "./types";
+import type { BackendInfo, DocumentFile, LocalSettingsDraft, LocalSettingsStatus, Message, Project, RagAnswer, Session } from "./types";
 
 class JarvisApi {
   private info?: BackendInfo;
@@ -33,7 +33,7 @@ class JarvisApi {
     return response.json() as Promise<T>;
   }
 
-  health() { return this.request<{ status: string; version: string; tools: number }>("/v1/health"); }
+  health() { return this.request<{ status: string; version: string; mode: string }>("/v1/health"); }
   settings() { return this.request<LocalSettingsStatus>("/v1/settings"); }
   updateSettings(settings: LocalSettingsDraft) {
     return this.request<LocalSettingsStatus>("/v1/settings", { method: "POST", body: JSON.stringify(settings) });
@@ -48,7 +48,7 @@ class JarvisApi {
   }
   messages(sessionId: string) { return this.request<Message[]>(`/v1/sessions/${sessionId}/messages`); }
   send(sessionId: string, content: string) {
-    return this.request<AgentAnswer>(`/v1/messages?session_id=${encodeURIComponent(sessionId)}`, { method: "POST", body: JSON.stringify({ content }) });
+    return this.request<RagAnswer>(`/v1/messages?session_id=${encodeURIComponent(sessionId)}`, { method: "POST", body: JSON.stringify({ content }) });
   }
   setPolicy(sessionId: string, policy: Record<string, string>) {
     return this.request(`/v1/sessions/${sessionId}/policy`, { method: "POST", body: JSON.stringify(policy) });
@@ -62,11 +62,6 @@ class JarvisApi {
     return this.request<{ records: unknown[] }>(`/v1/uploads?project_id=${encodeURIComponent(projectId)}`, { method: "POST", body: form });
   }
   importProject(projectId: string) { return this.request(`/v1/projects/${projectId}/import`, { method: "POST" }); }
-  confirm(approvalId: string, localCode?: string) {
-    return this.request(`/v1/approvals/${approvalId}/confirm`, { method: "POST", body: JSON.stringify({ local_code: localCode || null }) });
-  }
-  localCode(approvalId: string) { return this.request<{ local_code: string }>(`/v1/approvals/${approvalId}/local-code`); }
-  cancel(approvalId: string) { return this.request(`/v1/approvals/${approvalId}/cancel`, { method: "POST" }); }
   async events(onEvent: (event: { type: string; session_id?: string; payload: Record<string, unknown> }) => void) {
     const info = await this.connect();
     const socket = new WebSocket(`ws://${info.host}:${info.port}/v1/events?token=${encodeURIComponent(info.ipc_token)}`);
