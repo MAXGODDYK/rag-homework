@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from jarvis.api import create_app
+from jarvis.models import Event
 from jarvis.runtime import build_runtime
 
 
@@ -18,6 +19,13 @@ def test_local_api_requires_ipc_token(monkeypatch, tmp_path: Path) -> None:
     response = client.get("/v1/health", headers={"X-Jarvis-Token": "known-token"})
     assert response.status_code == 200
     assert response.json()["mode"] == "desktop-rag-only"
+
+
+def test_chat_event_has_a_complete_runtime_schema() -> None:
+    """A chat request must be able to publish its first lifecycle event."""
+    event = Event(type="chat.started", session_id="session_demo")
+
+    assert event.payload == {}
 
 
 def test_sessions_store_only_rag_provider_and_corpus_policy(monkeypatch, tmp_path: Path) -> None:
