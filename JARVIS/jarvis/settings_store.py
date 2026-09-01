@@ -16,7 +16,6 @@ from .rag_service import DesktopRagService
 FIELD_TO_ENV = {
     "freemodel_api_key": "FREEMODEL_API_KEY",
     "openai_api_key": "OPENAI_API_KEY",
-    "hf_token": "HF_TOKEN",
     "freemodel_model": "FREEMODEL_MODEL",
 }
 
@@ -40,7 +39,6 @@ def public_settings_status(config: JarvisConfig, rag: DesktopRagService) -> dict
         "configured": {
             "freemodel_api_key": bool(settings.freemodel_api_key),
             "openai_api_key": bool(settings.openai_api_key),
-            "hf_token": bool(settings.hf_token),
         },
         "models": {
             "freemodel": settings.freemodel_model,

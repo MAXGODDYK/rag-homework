@@ -68,6 +68,5 @@ export type LocalSettingsStatus = {
 export type LocalSettingsDraft = {
   freemodel_api_key?: string;
   openai_api_key?: string;
-  hf_token?: string;
   freemodel_model?: string;
 };

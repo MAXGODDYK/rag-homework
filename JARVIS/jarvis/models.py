@@ -101,12 +101,10 @@ class LocalSettingsUpdate(BaseModel):
 
     freemodel_api_key: str | None = Field(default=None, max_length=4096)
     openai_api_key: str | None = Field(default=None, max_length=4096)
-    hf_token: str | None = Field(default=None, max_length=4096)
     freemodel_model: str | None = Field(default=None, max_length=256)
     clear: list[
         Literal[
             "freemodel_api_key",
             "openai_api_key",
-            "hf_token",
         ]
     ] = Field(default_factory=list, max_length=3)
