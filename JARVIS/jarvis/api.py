@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Upload
 from fastapi.middleware.cors import CORSMiddleware
 
 from .models import Event, LocalSettingsUpdate, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy
+from .ingestion.service import IngestionError
 from .rag_service import RagServiceError
 from .runtime import Runtime, build_runtime
 from .settings_store import public_settings_status, update_local_settings
@@ -111,7 +112,7 @@ def create_app(
     @app.get("/v1/sessions/{session_id}/messages")
     def messages(session_id: str, user_id: str = Depends(authorize)):
         session = runtime.database.query_one(
-            "SELECT id FROM sessions WHERE id=? AND user_id=?", (session_id, user_id)
+            "SELECT id, project_id FROM sessions WHERE id=? AND user_id=?", (session_id, user_id)
         )
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -135,6 +136,22 @@ def create_app(
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         await runtime.events.publish(user_id, Event(type="chat.started", session_id=session_id))
+        if session["project_id"]:
+            await runtime.events.publish(user_id, Event(type="project.syncing", session_id=session_id))
+            try:
+                summary = await asyncio.to_thread(
+                    runtime.ingestion.sync_project,
+                    user_id=user_id,
+                    project_id=session["project_id"],
+                )
+            except IngestionError as error:
+                await runtime.events.publish(
+                    user_id, Event(type="chat.failed", session_id=session_id, payload={"error": str(error)})
+                )
+                raise HTTPException(status_code=422, detail=str(error)) from error
+            await runtime.events.publish(
+                user_id, Event(type="project.synced", session_id=session_id, payload=summary.public())
+            )
         try:
             answer = await asyncio.to_thread(runtime.rag.answer, session_id, payload.content)
         except RagServiceError as error:

@@ -63,6 +63,8 @@ class Event(BaseModel):
     type: Literal[
         "chat.started",
         "chat.delta",
+        "project.syncing",
+        "project.synced",
         "retrieval.completed",
         "file.changed",
         "chat.completed",

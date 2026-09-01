@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from pptx import Presentation
 
 from jarvis.ingestion.archives import ArchiveSafetyError, extract_archive
-from jarvis.ingestion.parsers import parse_document
+from jarvis.ingestion.parsers import DocumentParseError, parse_document
 from jarvis.ingestion.repository import analyze_code
 from jarvis.ingestion.service import IngestionService
 from jarvis.ingestion.vector_index import VectorIndex
@@ -173,3 +173,87 @@ def test_ingestion_is_isolated_by_user_and_project(monkeypatch, tmp_path: Path) 
     assert database.query_one(
         "SELECT id FROM documents WHERE id=?", (owner_record["document_id"],)
     ) is None
+
+
+def test_incremental_project_sync_exports_current_artifacts_and_archives_old_content(monkeypatch, tmp_path: Path) -> None:
+    """Only actual source changes create new chunks or rebuild the vector artifact."""
+    config = make_config(tmp_path)
+    database = make_database(config)
+    source_root = tmp_path / "demo-project"
+    source_root.mkdir()
+    tracked = source_root / "notes.md"
+    tracked.write_text("# First\nold project fact", encoding="utf-8")
+    project = database.create_project("owner", "Demo Project", str(source_root))
+    service = IngestionService(config, database)
+    rebuilds: list[list[str]] = []
+
+    def fake_rebuild(index: VectorIndex, ids: list[str], texts: list[str]) -> None:
+        rebuilds.append(ids)
+        index.root.mkdir(parents=True, exist_ok=True)
+        (index.root / "faiss.index").write_bytes(b"test-index")
+        (index.root / "manifest.json").write_text(json.dumps({"chunk_ids": ids}), encoding="utf-8")
+
+    monkeypatch.setattr(VectorIndex, "rebuild", fake_rebuild)
+
+    first = service.sync_project(user_id="owner", project_id=project["id"])
+    root = service.project_state_root("owner", project["id"])
+    assert first.added == 1
+    assert root.parent.name == "projects"
+    assert (root / "chunks.jsonl").exists() and (root / "manifest.json").exists()
+    current = [json.loads(line) for line in (root / "chunks.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert current[0]["relative_path"] == "notes.md"
+    assert current[0]["source_sha256"]
+    assert rebuilds and len(rebuilds) == 1
+
+    second = service.sync_project(user_id="owner", project_id=project["id"])
+    assert second.unchanged == 1
+    assert len(rebuilds) == 1
+
+    # Touching the file without changing its bytes refreshes only source metadata.
+    tracked.touch()
+    same_bytes = service.sync_project(user_id="owner", project_id=project["id"])
+    assert same_bytes.metadata_refreshed == 1
+    assert len(rebuilds) == 1
+
+    tracked.write_text("# Second\nnew project fact", encoding="utf-8")
+    changed = service.sync_project(user_id="owner", project_id=project["id"])
+    assert changed.updated == 1
+    assert len(rebuilds) == 2
+    assert any((root / "history").glob("*.jsonl"))
+    refreshed = (root / "chunks.jsonl").read_text(encoding="utf-8")
+    assert "new project fact" in refreshed and "old project fact" not in refreshed
+
+    tracked.unlink()
+    removed = service.sync_project(user_id="owner", project_id=project["id"])
+    assert removed.removed == 1
+    assert len(rebuilds) == 3
+    assert (root / "chunks.jsonl").read_text(encoding="utf-8") == ""
+    assert database.query_all("SELECT * FROM chunks WHERE project_id=?", (project["id"],)) == []
+
+
+def test_rejected_changed_file_is_archived_and_never_left_in_current_chunks(monkeypatch, tmp_path: Path) -> None:
+    config = make_config(tmp_path)
+    database = make_database(config)
+    source_root = tmp_path / "broken-project"
+    source_root.mkdir()
+    source = source_root / "notes.txt"
+    source.write_text("valid current text", encoding="utf-8")
+    project = database.create_project("owner", "Broken Project", str(source_root))
+    service = IngestionService(config, database)
+
+    def fake_rebuild(index: VectorIndex, ids: list[str], texts: list[str]) -> None:
+        index.root.mkdir(parents=True, exist_ok=True)
+        (index.root / "faiss.index").write_bytes(b"test-index")
+
+    monkeypatch.setattr(VectorIndex, "rebuild", fake_rebuild)
+    service.sync_project(user_id="owner", project_id=project["id"])
+    source.write_text("changed but rejected", encoding="utf-8")
+    monkeypatch.setattr("jarvis.ingestion.service.parse_document", lambda _: (_ for _ in ()).throw(DocumentParseError("bad parser")))
+
+    result = service.sync_project(user_id="owner", project_id=project["id"])
+    root = service.project_state_root("owner", project["id"])
+    assert result.rejected == 1
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["files"]["notes.txt"]["status"] == "rejected"
+    assert (root / "chunks.jsonl").read_text(encoding="utf-8") == ""
+    assert any((root / "history").glob("*.jsonl"))

@@ -15,14 +15,14 @@ const UI = {
   en: {
     newConversation: "New conversation", projects: "PROJECTS", conversations: "CONVERSATIONS", settings: "Settings", importFolder: "Import a folder", noProjects: "No projects yet", noProject: "No project", localFiles: "local files",
     providerLocal: "Local Qwen3", evidenceOnly: "Evidence only", corpusProject: "Corpus: current project", corpusAll: "Corpus: all projects", file: "File", askFiles: "Ask about imported files", welcome: "JARVIS searches the selected corpus with FTS5, multilingual FAISS and BGE reranking, then shows exact source citations.",
-    summarize: "Summarize selected files", searchDocuments: "Search my documents", you: "You", grounded: "Grounded", insufficient: "Insufficient context", retrieving: "Retrieving", searching: "Searching the selected corpus", placeholder: "Ask a question about your imported files…", upload: "Upload files", untrusted: "Imported files are untrusted context. Answers include citations.",
+    summarize: "Summarize selected files", searchDocuments: "Search my documents", you: "You", grounded: "Grounded", insufficient: "Insufficient context", retrieving: "Retrieving", searching: "Searching the selected corpus", checkingChanges: "Checking project changes…", noChanges: "No changes", updatedFiles: "Updated {count} files", removedFiles: "Removed {count} files", rejectedFiles: "{count} files could not be indexed", placeholder: "Ask a question about your imported files…", upload: "Upload files", untrusted: "Imported files are untrusted context. Answers include citations.",
     corpus: "CORPUS", drop: "Drop documents, code or a project archive here", preview: "Preview", useProject: "Use project corpus", graph: "Dependency graph", selectFile: "Select an imported file to inspect its extracted text.",
     settingsTitle: "Local model settings", settingsSubtitle: "JARVIS runs through local Ollama. No API keys are used.", language: "Interface language", provider: "Answer mode", localModel: "Local Ollama model", available: "available", notConfigured: "not available", saved: "Saved locally. Local-model availability was refreshed.", desktopOnly: "JARVIS is desktop-only. Imported files and answers stay on this PC.", close: "Close", save: "Save locally", saving: "Saving…", page: "page",
   },
   ru: {
     newConversation: "Новый диалог", projects: "ПРОЕКТЫ", conversations: "ДИАЛОГИ", settings: "Настройки", importFolder: "Импортировать папку", noProjects: "Проектов пока нет", noProject: "Нет проекта", localFiles: "локальные файлы",
     providerLocal: "Локальная Qwen3", evidenceOnly: "Только источники", corpusProject: "Корпус: текущий проект", corpusAll: "Корпус: все проекты", file: "Файл", askFiles: "Задайте вопрос по импортированным файлам", welcome: "JARVIS ищет в выбранном корпусе через FTS5, многоязычный FAISS и BGE reranking, затем показывает точные ссылки на источники.",
-    summarize: "Кратко изложить выбранные файлы", searchDocuments: "Поиск по документам", you: "Вы", grounded: "Ответ по источникам", insufficient: "Недостаточно контекста", retrieving: "Поиск", searching: "Поиск по выбранному корпусу", placeholder: "Задайте вопрос по импортированным файлам…", upload: "Загрузить файлы", untrusted: "Импортированные файлы — недоверенный контекст. Ответы содержат источники.",
+    summarize: "Кратко изложить выбранные файлы", searchDocuments: "Поиск по документам", you: "Вы", grounded: "Ответ по источникам", insufficient: "Недостаточно контекста", retrieving: "Поиск", searching: "Поиск по выбранному корпусу", checkingChanges: "Проверка изменений проекта…", noChanges: "Изменений нет", updatedFiles: "Обновлено файлов: {count}", removedFiles: "Удалено файлов: {count}", rejectedFiles: "Не удалось проиндексировать файлов: {count}", placeholder: "Задайте вопрос по импортированным файлам…", upload: "Загрузить файлы", untrusted: "Импортированные файлы — недоверенный контекст. Ответы содержат источники.",
     corpus: "КОРПУС", drop: "Перетащите сюда документы, код или архив проекта", preview: "Предпросмотр", useProject: "Использовать весь проект", graph: "Граф зависимостей", selectFile: "Выберите импортированный файл, чтобы увидеть извлечённый текст.",
     settingsTitle: "Настройки локальной модели", settingsSubtitle: "JARVIS работает через локальный Ollama. API-ключи не используются.", language: "Язык интерфейса", provider: "Режим ответа", localModel: "Локальная модель Ollama", available: "доступна", notConfigured: "недоступна", saved: "Сохранено локально. Доступность локальной модели обновлена.", desktopOnly: "JARVIS работает только на этом ПК. Импортированные файлы и ответы остаются локально.", close: "Закрыть", save: "Сохранить локально", saving: "Сохранение…", page: "стр.",
   },
@@ -43,6 +43,7 @@ export function App() {
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [streaming, setStreaming] = useState("");
+  const [syncStatus, setSyncStatus] = useState("");
   const [error, setError] = useState("");
   const [policy, setPolicy] = useState<Policy>(defaultPolicy);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -69,6 +70,18 @@ export function App() {
     api.events((event) => {
       if (event.session_id && event.session_id !== activeSession) return;
       if (event.type === "chat.started") setStreaming("");
+      if (event.type === "project.syncing") setSyncStatus(text.checkingChanges);
+      if (event.type === "project.synced") {
+        const updated = Number(event.payload.added || 0) + Number(event.payload.updated || 0);
+        const removed = Number(event.payload.removed || 0);
+        const rejected = Number(event.payload.rejected || 0);
+        const lines = [
+          updated ? text.updatedFiles.replace("{count}", String(updated)) : "",
+          removed ? text.removedFiles.replace("{count}", String(removed)) : "",
+          rejected ? text.rejectedFiles.replace("{count}", String(rejected)) : "",
+        ].filter(Boolean);
+        setSyncStatus(lines.join(" · ") || text.noChanges);
+      }
       if (event.type === "chat.delta") setStreaming((value) => value + String(event.payload.delta || ""));
       if (event.type === "chat.failed") setError(String(event.payload.error || "RAG request failed"));
     }).then((value) => { close = value; }).catch(() => undefined);
@@ -107,11 +120,15 @@ export function App() {
   async function send(event: FormEvent) {
     event.preventDefault();
     if (!query.trim() || !activeSession || busy) return;
-    const content = query.trim(); setQuery(""); setBusy(true); setStreaming(""); setError("");
+    const content = query.trim(); setQuery(""); setBusy(true); setStreaming(""); setSyncStatus(text.checkingChanges); setError("");
     setMessages((items) => [...items, { id: crypto.randomUUID(), role: "user", content, grounded: 0, metadata_json: "{}", created_at: new Date().toISOString() }]);
     try {
       const next = await api.send(activeSession, content); setAnswer(next);
       setMessages((items) => [...items, { id: next.message_id, role: "assistant", content: next.answer, grounded: Number(next.grounded), metadata_json: JSON.stringify(next), created_at: new Date().toISOString() }]);
+      if (activeProject) {
+        const [nextFiles, nextGraph] = await Promise.all([api.files(activeProject), api.graph(activeProject)]);
+        setFiles(nextFiles); setRepositoryGraph(nextGraph);
+      }
     } catch (event) { setError(String(event)); } finally { setBusy(false); setStreaming(""); }
   }
   async function handleFiles(list: FileList | File[]) {
@@ -146,7 +163,7 @@ export function App() {
           {!messages.length && <div className="welcome"><div className="hero-icon"><Sparkles/></div><h1>{text.askFiles}</h1><p>{text.welcome}</p><div className="suggestions"><button onClick={() => setQuery(language === "ru" ? "Кратко изложи главную информацию в выбранных файлах и укажи источники." : "Summarize the most important information in the selected files and cite it.")}>{text.summarize}</button><button onClick={() => setQuery(language === "ru" ? "Что сказано в этих файлах о главной теме? Укажи источник." : "What do these files say about the main topic? Cite the source.")}>{text.searchDocuments}</button></div></div>}
           {messages.map((message) => <article key={message.id} className={`message ${message.role}`}><div className="avatar">{message.role === "user" ? "YOU" : "JR"}</div><div><div className="message-meta">{message.role === "user" ? text.you : "JARVIS"}{message.role === "assistant" && <span className={message.grounded ? "grounded" : "general"}>{message.grounded ? text.grounded : text.insufficient}</span>}</div><div className="message-body">{message.content}</div>{message.role === "assistant" && answer?.message_id === message.id && <Citations items={answer.citations} language={language}/>}</div></article>)}
           {busy && streaming && <article className="message assistant"><div className="avatar">JR</div><div><div className="message-meta">JARVIS <span className="grounded">{text.retrieving}</span></div><div className="message-body">{streaming}</div></div></article>}
-          {busy && !streaming && <div className="thinking"><span/><span/><span/> {text.searching}</div>}
+          {busy && !streaming && <div className="thinking"><span/><span/><span/> {syncStatus || text.searching}</div>}
         </div>{error && <div className="error"><span>{error}</span><button onClick={() => setError("")}><X size={14}/></button></div>}<form className="composer" onSubmit={send}><textarea value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.placeholder} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}/><div className="composer-actions"><button type="button" className="icon" onClick={() => uploadRef.current?.click()} title={text.upload}><FilePlus2 size={17}/></button><span>{text.untrusted}</span><button className="send" disabled={busy || !activeSession}><Send size={16}/></button></div></form><input ref={uploadRef} hidden type="file" multiple onChange={(event) => event.target.files && void handleFiles(event.target.files)}/></section>
         <aside className="project-panel"><div className="panel-title"><span><Code2 size={15}/> {text.corpus}</span><button onClick={() => uploadRef.current?.click()}><Upload size={14}/></button></div><div className="file-tree">{files.map((file) => <button key={file.id} className={selectedFile?.id === file.id ? "file-row selected" : "file-row"} onClick={() => void openFile(file)}><File size={14}/><span>{file.relative_path}</span><small>{Math.ceil(file.size_bytes / 1024)} KB</small></button>)}{!files.length && <div className="drop-zone"><Upload size={22}/><span>{text.drop}</span></div>}</div><div className="editor-title"><span>{selectedFile?.relative_path || text.preview}</span>{selectedFile && <button onClick={() => void changePolicy({ source_selector: "auto" })}>{text.useProject}</button>}</div><div className="editor"><Editor height="100%" theme="vs-dark" value={fileContent} language={selectedFile?.language || "plaintext"} options={{ readOnly: true, minimap: { enabled: false }, fontSize: 12, wordWrap: "on", scrollBeyondLastLine: false }}/></div></aside>
       </div>

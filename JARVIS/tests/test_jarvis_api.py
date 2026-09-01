@@ -28,6 +28,11 @@ def test_chat_event_has_a_complete_runtime_schema() -> None:
     assert event.payload == {}
 
 
+def test_project_sync_events_have_a_complete_runtime_schema() -> None:
+    assert Event(type="project.syncing", session_id="session_demo").type == "project.syncing"
+    assert Event(type="project.synced", payload={"updated": 1}).payload["updated"] == 1
+
+
 def test_sessions_store_only_rag_provider_and_corpus_policy(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("JARVIS_STATE_ROOT", str(tmp_path / "state"))
     monkeypatch.setenv("JARVIS_MIN_FREE_DISK_GB", "1")
