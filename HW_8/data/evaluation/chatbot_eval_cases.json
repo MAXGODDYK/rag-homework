@@ -1,0 +1,80 @@
+[
+  {
+    "id": 1,
+    "kind": "rag",
+    "question": "Коли протягом дня мозок найкраще засвоює навчальний матеріал?",
+    "expected_behavior": "RAG має знайти рекомендації про продуктивний час навчання та дати grounded відповідь.",
+    "expected_chunk_ids": ["exam_time_planning_chunk_002", "exam_time_planning_chunk_003"],
+    "expect_fallback": false
+  },
+  {
+    "id": 2,
+    "kind": "rag",
+    "question": "Як скласти реалістичний план підготовки до іспиту?",
+    "expected_behavior": "RAG має повернути фрагменти про цілі, learning track і планування підготовки.",
+    "expected_chunk_ids": ["exam_time_planning_chunk_011", "exam_time_planning_chunk_012", "exam_time_planning_chunk_014", "exam_time_planning_chunk_015"],
+    "expect_fallback": false
+  },
+  {
+    "id": 3,
+    "kind": "rag",
+    "question": "Як визначити, які справи термінові, а які важливі?",
+    "expected_behavior": "RAG має знайти матеріал про пріоритети та розподіл завдань.",
+    "expected_chunk_ids": ["student_daily_routine_chunk_001", "student_daily_routine_chunk_002", "student_time_management_chunk_002"],
+    "expect_fallback": false
+  },
+  {
+    "id": 4,
+    "kind": "rag",
+    "question": "Що робити, коли постійно відкладаю навчання?",
+    "expected_behavior": "RAG має знайти поради щодо прокрастинації; це навмисно складний retrieval case.",
+    "expected_chunk_ids": ["exam_time_planning_chunk_018", "student_time_management_chunk_002", "student_time_management_chunk_003"],
+    "partial_chunk_ids": ["exam_time_planning_chunk_009", "exam_time_planning_chunk_016", "exam_time_planning_chunk_017"],
+    "expect_fallback": false
+  },
+  {
+    "id": 5,
+    "kind": "rag",
+    "question": "Яка столиця Франції?",
+    "expected_behavior": "Confidence gate має відхилити нерелевантний контекст і повернути fallback без citations.",
+    "expected_chunk_ids": [],
+    "expect_fallback": true
+  },
+  {
+    "id": 6,
+    "kind": "tool",
+    "question": "Який офіційний курс USD сьогодні?",
+    "expected_behavior": "Має бути викликаний read-only NBU tool для поточного курсу USD.",
+    "tool_input": {"currency_code": "USD"}
+  },
+  {
+    "id": 7,
+    "kind": "tool",
+    "question": "Скільки гривень потрібно для 100 EUR?",
+    "expected_behavior": "Має бути викликаний NBU tool і виконано детермінований перерахунок 100 EUR у гривні.",
+    "tool_input": {"currency_code": "EUR", "amount": "100"}
+  },
+  {
+    "id": 8,
+    "kind": "rag",
+    "question": "How can a student balance studying, sleep, and rest without burnout?",
+    "expected_behavior": "Multilingual RAG має знайти chunks про сон, відпочинок і перерви.",
+    "expected_chunk_ids": ["exam_time_planning_chunk_004", "exam_time_planning_chunk_005", "exam_time_planning_chunk_006", "student_time_management_chunk_004"],
+    "expect_fallback": false
+  },
+  {
+    "id": 9,
+    "kind": "agent",
+    "question": "Розкажи щось корисне.",
+    "expected_behavior": "Deterministic student-planning agent має обрати clarification і не викликати tools.",
+    "expected_agent_route": "clarification"
+  },
+  {
+    "id": 10,
+    "kind": "rag",
+    "question": "Чи потрібно мені змінити університет?",
+    "expected_behavior": "Слабкий нерелевантний retrieval має завершитися fallback без вигаданих порад.",
+    "expected_chunk_ids": [],
+    "expect_fallback": true
+  }
+]

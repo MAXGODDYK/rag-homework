@@ -1,0 +1,17 @@
+{
+  "total_cases": 10,
+  "success_count": 9,
+  "partial_success_count": 1,
+  "failure_count": 0,
+  "success_rate": 0.9,
+  "groundedness_good_count": 10,
+  "groundedness_good_rate": 1.0,
+  "average_latency_ms": 2357,
+  "average_retrieval_latency_ms": 2304,
+  "max_latency_ms": 12038,
+  "top_error_types": {
+    "none": 8,
+    "wrong_retrieval": 1,
+    "evaluation_provider_language_mismatch": 1
+  }
+}

@@ -202,3 +202,8 @@ cython_debug/
 /HW_7/local_config/constants.py
 /HW_7/local_state/
 /HW_7/.venv/
+
+# HW8 private configuration and runtime state
+/HW_8/local_config/constants.py
+/HW_8/local_state/
+/HW_8/.venv/

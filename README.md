@@ -12,3 +12,5 @@
   mock tools, повний trace і Telegram `/plan`.
 - `HW_7` — перенесення student-planning workflow на LangGraph: TypedDict
   state, nodes, conditional edges, три трасування та порівняння з HW6.
+- `HW_8` — evaluation + observability layer: fixed eval set, CSV/JSONL
+  traces, метрики якості та latency, quality report із next steps.
