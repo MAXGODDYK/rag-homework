@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 from typing import Protocol
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from config.settings import Settings
 
 
 class ProviderError(RuntimeError):
-    """A safe remote-generation failure."""
+    """A safe local-generation failure that never exposes transport details."""
 
 
 class TextProvider(Protocol):
@@ -17,65 +20,56 @@ class TextProvider(Protocol):
     def generate(self, prompt: str) -> str: ...
 
 
-class OpenAIProvider:
-    name = "openai"
+class OllamaProvider:
+    """Local Qwen generation through the Ollama loopback API."""
+
+    name = "local"
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self._client = None
+    @property
+    def _base_url(self) -> str:
+        return self.settings.ollama_base_url.rstrip("/")
 
     def availability(self) -> tuple[bool, str]:
-        return (True, f"model={self.settings.openai_model}") if self.settings.openai_api_key else (False, "OPENAI_API_KEY is not configured")
+        try:
+            with urlopen(f"{self._base_url}/api/tags", timeout=3) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (URLError, HTTPError, TimeoutError, OSError, json.JSONDecodeError):
+            return False, "Ollama is not running on this PC"
+
+        models = payload.get("models", []) if isinstance(payload, dict) else []
+        names = {str(item.get("name", "")) for item in models if isinstance(item, dict)}
+        if self.settings.ollama_model not in names:
+            return False, f"model {self.settings.ollama_model} is not downloaded"
+        return True, f"local model={self.settings.ollama_model}"
 
     def generate(self, prompt: str) -> str:
         if not self.availability()[0]:
-            raise ProviderError("OpenAI is not configured")
+            raise ProviderError("The local Ollama model is unavailable")
+        body = {
+            "model": self.settings.ollama_model,
+            "prompt": prompt,
+            "stream": False,
+            "think": False,
+            "options": {"temperature": 0.1, "num_ctx": 8192},
+        }
+        request = Request(
+            f"{self._base_url}/api/generate",
+            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
-            if self._client is None:
-                from openai import OpenAI
-                self._client = OpenAI(api_key=self.settings.openai_api_key)
-            response = self._client.responses.create(
-                model=self.settings.openai_model,
-                input=prompt,
-                max_output_tokens=self.settings.maximum_answer_tokens,
-            )
-            text = str(getattr(response, "output_text", "")).strip()
-        except Exception as error:
-            raise ProviderError(f"OpenAI generation failed: {type(error).__name__}") from error
+            with urlopen(request, timeout=180) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (URLError, HTTPError, TimeoutError, OSError, json.JSONDecodeError) as error:
+            raise ProviderError("Local Ollama generation failed") from error
+        text = str(payload.get("response", "")).strip() if isinstance(payload, dict) else ""
         if not text:
-            raise ProviderError("OpenAI returned an empty answer")
-        return text
-
-
-class FreeModelProvider:
-    name = "freemodel"
-
-    def __init__(self, settings: Settings) -> None:
-        self.settings = settings
-        self._client = None
-
-    def availability(self) -> tuple[bool, str]:
-        return (True, f"model={self.settings.freemodel_model}") if self.settings.freemodel_api_key else (False, "FREEMODEL_API_KEY is not configured")
-
-    def generate(self, prompt: str) -> str:
-        if not self.availability()[0]:
-            raise ProviderError("FreeModel is not configured")
-        try:
-            if self._client is None:
-                from openai import OpenAI
-                self._client = OpenAI(api_key=self.settings.freemodel_api_key, base_url=self.settings.freemodel_base_url)
-            response = self._client.chat.completions.create(
-                model=self.settings.freemodel_model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=self.settings.maximum_answer_tokens,
-            )
-            text = str(response.choices[0].message.content or "").strip()
-        except Exception as error:
-            raise ProviderError(f"FreeModel generation failed: {type(error).__name__}") from error
-        if not text:
-            raise ProviderError("FreeModel returned an empty answer")
+            raise ProviderError("The local model returned an empty answer")
         return text
 
 
 def build_text_providers(settings: Settings) -> dict[str, TextProvider]:
-    return {"freemodel": FreeModelProvider(settings), "openai": OpenAIProvider(settings)}
+    return {"local": OllamaProvider(settings)}

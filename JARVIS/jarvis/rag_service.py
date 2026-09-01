@@ -110,9 +110,7 @@ class DesktopRagService:
 
     def _provider(self, profile: str) -> tuple[str, TextProvider] | None:
         order = {
-            "auto": ("freemodel", "openai"),
-            "freemodel": ("freemodel",),
-            "openai": ("openai",),
+            "local": ("local",),
             "extractive": (),
         }.get(profile, ())
         for name in order:

@@ -71,7 +71,10 @@ class DynamicRetriever:
         if self._reranker is None:
             from sentence_transformers import CrossEncoder
 
-            self._reranker = CrossEncoder(self.reranker_model)
+            # Qwen3-14B is deliberately kept on the 12 GB GPU through Ollama.
+            # BGE-v2-m3 is a large cross-encoder, so running it on the CPU
+            # prevents a VRAM collision during one grounded RAG request.
+            self._reranker = CrossEncoder(self.reranker_model, device="cpu")
         return self._reranker
 
     def search(

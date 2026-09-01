@@ -15,9 +15,8 @@ JARVIS — мій локальний desktop-застосунок для роб�
   metadata, symbols та dependency graph для коду;
 - виконує hybrid retrieval і BGE reranking;
 - дозволяє обрати current project, all projects або конкретний файл до запиту;
-- повертає відповідь із citations. Якщо LLM не налаштована, працює
-  `Evidence only`: показує релевантні уривки й citations без вигадування
-  відповіді.
+- повертає відповідь із citations через локальну Qwen3. Режим `Evidence only`
+  за потреби показує релевантні уривки й citations без генерації відповіді.
 
 ## RAG pipeline
 
@@ -54,26 +53,36 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 
+# One-time local model download (about 9.3 GB for the Q4 variant).
+ollama pull qwen3:14b
+
 cd desktop
 npm install
 npm run tauri dev
 ```
 
-Tauri запускає Python backend як локальний sidecar. Він слухає лише
-`127.0.0.1`, використовує одноразовий IPC token і не відкриває мережевий
-server назовні. Щоб зупинити застосунок, достатньо закрити desktop-вікно або
-натиснути `Ctrl+C` у terminal, де запущено `npm run tauri dev`.
+Tauri запускає Python backend локально. Desktop-ярлик для цього проєкту
+використовує `JARVIS/.venv`, тому працюють повний FAISS semantic search і BGE
+reranking, а не лише lexical mode. Backend слухає тільки `127.0.0.1`,
+використовує одноразовий IPC token і не відкриває мережевий server назовні.
+Щоб зупинити застосунок, достатньо закрити desktop-вікно або натиснути
+`Ctrl+C` у terminal, де запущено `npm run tauri dev`.
 
-## Налаштування provider
+## Локальна модель
 
-Ключ можна ввести у **Settings** desktop-застосунку. Альтернативно треба
-скопіювати `local_config/constants.example.py` у
-`local_config/constants.py` та додати локальні значення. `constants.py`,
-`.env`, індекси, завантажені файли й caches не потрапляють у Git.
+JARVIS використовує лише локальний Ollama endpoint `127.0.0.1:11434` і
+`qwen3:14b`. У **Settings** можна змінити лише назву вже завантаженої
+локальної Ollama-моделі. API-ключі для генерації не використовуються, а
+контекст документів не надсилається у хмарні LLM.
 
-Підтримуються `FreeModel` та `OpenAI`. Provider не є обов'язковим:
-`Evidence only` не надсилає контекст у зовнішню модель і повертає лише
-retrieved passages з citations.
+На ПК з 12 GB VRAM Qwen3-14B працює на GPU, а BGE reranker навмисно працює на
+CPU. Це залишає відеопам'ять для генерації і не допускає конфлікту моделей;
+ціною є трохи довший retrieval перед відповіддю.
+
+За потреби `HF_TOKEN` у `local_config/constants.py` дозволяє швидше
+завантажувати локальні embedding/reranker ваги з Hugging Face. Це не ключ
+провайдера відповідей. `constants.py`, `.env`, індекси, завантажені файли й
+caches не потрапляють у Git.
 
 ## Перевірка
 
@@ -94,5 +103,5 @@ citations, evidence gate, extractive fallback і ранню metadata-фільт�
   corpus.
 - OCR, зображення, аудіо та відео не індексуються в цій версії.
 - Індексація великої папки зараз виконується синхронно.
-- BGE та FAISS потребують повного Python runtime; compact installer може
-  працювати лише lexical mode.
+- Повний FAISS і BGE pipeline потребує локального Python runtime у
+  `JARVIS/.venv`; компактний installer без нього працює лише в lexical mode.

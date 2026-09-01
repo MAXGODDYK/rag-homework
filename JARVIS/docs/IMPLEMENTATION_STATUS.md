@@ -24,4 +24,4 @@
 - full FAISS/BGE retrieval requires the complete Python environment;
 - OCR, media parsing and asynchronous ingestion jobs are not implemented;
 - a remote model receives only retrieved context when the user enables a
-  provider; `Evidence only` avoids this external transfer.
+  local Ollama model; `Evidence only` avoids generation completely.

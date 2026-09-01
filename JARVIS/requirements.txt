@@ -2,7 +2,6 @@ beautifulsoup4>=4.12,<5
 sentence-transformers>=3,<6
 faiss-cpu>=1.8,<2
 numpy>=1.26,<3
-openai>=2,<3
 python-dotenv>=1,<2
 pydantic>=2,<3
 httpx>=0.28,<1

@@ -19,8 +19,8 @@ class SessionPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provider_profile: Literal[
-        "auto", "freemodel", "openai", "extractive"
-    ] = "auto"
+        "local", "extractive"
+    ] = "local"
     source_selector: str = "auto"
 
 
@@ -99,12 +99,4 @@ class LocalSettingsUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    freemodel_api_key: str | None = Field(default=None, max_length=4096)
-    openai_api_key: str | None = Field(default=None, max_length=4096)
-    freemodel_model: str | None = Field(default=None, max_length=256)
-    clear: list[
-        Literal[
-            "freemodel_api_key",
-            "openai_api_key",
-        ]
-    ] = Field(default_factory=list, max_length=3)
+    ollama_model: str | None = Field(default=None, min_length=1, max_length=256)

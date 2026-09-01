@@ -1,12 +1,19 @@
 @echo off
 setlocal
 
-rem The desktop executable inherits this path and starts the matching backend.
-set "JARVIS_SIDECAR_PATH=%~dp0..\desktop\src-tauri\target\release\jarvis-sidecar.exe"
+rem Use the project Python runtime so semantic retrieval and BGE reranking
+rem stay enabled instead of falling back to the compact lexical-only sidecar.
+set "JARVIS_USE_DEVELOPMENT_PYTHON=1"
+set "JARVIS_DESKTOP=%~dp0..\desktop\src-tauri\target\release\jarvis-desktop.exe"
+set "JARVIS_PYTHON=%~dp0..\.venv\Scripts\python.exe"
 
-if not exist "%JARVIS_SIDECAR_PATH%" (
-  echo JARVIS sidecar was not found. Build the desktop application first.
+if not exist "%JARVIS_DESKTOP%" (
+  echo JARVIS desktop executable was not found. Build the desktop application first.
+  exit /b 1
+)
+if not exist "%JARVIS_PYTHON%" (
+  echo JARVIS Python environment was not found. Create JARVIS\.venv first.
   exit /b 1
 )
 
-start "" "%~dp0..\desktop\src-tauri\target\release\jarvis-desktop.exe"
+start "" "%JARVIS_DESKTOP%"

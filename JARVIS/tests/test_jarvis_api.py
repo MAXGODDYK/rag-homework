@@ -35,7 +35,7 @@ def test_sessions_store_only_rag_provider_and_corpus_policy(monkeypatch, tmp_pat
     assert response.status_code == 200
     session_id = response.json()["id"]
     assert runtime.policies.get(session_id).model_dump(mode="json") == {
-        "provider_profile": "auto",
+        "provider_profile": "local",
         "source_selector": "auto",
     }
     changed = client.post(

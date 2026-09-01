@@ -61,12 +61,10 @@ export type BackendInfo = { host: string; port: number; ipc_token: string };
 export type LocalSettingsStatus = {
   providers: Record<string, { available: boolean; reason: string }>;
   configured: Record<string, boolean>;
-  models: { freemodel: string; openai: string };
+  models: { local: string };
   storage: string;
 };
 
 export type LocalSettingsDraft = {
-  freemodel_api_key?: string;
-  openai_api_key?: string;
-  freemodel_model?: string;
+  ollama_model?: string;
 };

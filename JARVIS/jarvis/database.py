@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
-    provider_profile TEXT NOT NULL DEFAULT 'auto',
+    provider_profile TEXT NOT NULL DEFAULT 'local',
     source_selector TEXT NOT NULL DEFAULT 'auto',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL

@@ -1,14 +1,12 @@
 """Copy this file to constants.py and fill only local values."""
 
-# A provider is optional: without it JARVIS returns retrieved passages and
-# citations in extractive mode.
-OPENAI_API_KEY = ""
-FREEMODEL_API_KEY = ""
+# Hugging Face is optional and is used only when local embedding or reranker
+# weights need to be downloaded. It is not a generation-provider key.
 HF_TOKEN = ""
 
-OPENAI_MODEL = "gpt-4.1-mini"
-FREEMODEL_BASE_URL = "https://api.freemodel.dev/v1"
-FREEMODEL_MODEL = "auto"
+# JARVIS sends generation only to this local Ollama endpoint.
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+OLLAMA_MODEL = "qwen3:14b"
 
 # Local storage and ingestion quotas. These values are not committed when the
 # example is copied to ignored constants.py.

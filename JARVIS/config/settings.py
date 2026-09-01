@@ -17,12 +17,9 @@ LOCAL_CONSTANTS_PATH = PROJECT_ROOT / "local_config" / "constants.py"
 
 @dataclass(frozen=True)
 class Settings:
-    openai_api_key: str
     hf_token: str
-    freemodel_api_key: str = ""
-    openai_model: str = "gpt-4.1-mini"
-    freemodel_base_url: str = "https://api.freemodel.dev/v1"
-    freemodel_model: str = "auto"
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3:14b"
     embedding_model_name: str = (
         "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
@@ -71,22 +68,7 @@ def load_settings() -> Settings:
     load_dotenv(PROJECT_ROOT / ".env", override=False)
     constants = _load_local_constants(LOCAL_CONSTANTS_PATH)
     return Settings(
-        openai_api_key=_value("OPENAI_API_KEY", constants),
         hf_token=_value("HF_TOKEN", constants),
-        freemodel_api_key=_value("FREEMODEL_API_KEY", constants),
-        openai_model=_value(
-            "OPENAI_MODEL",
-            constants,
-            "gpt-4.1-mini",
-        ),
-        freemodel_base_url=_value(
-            "FREEMODEL_BASE_URL",
-            constants,
-            "https://api.freemodel.dev/v1",
-        ),
-        freemodel_model=_value(
-            "FREEMODEL_MODEL",
-            constants,
-            "auto",
-        ),
+        ollama_base_url=_value("OLLAMA_BASE_URL", constants, "http://127.0.0.1:11434"),
+        ollama_model=_value("OLLAMA_MODEL", constants, "qwen3:14b"),
     )

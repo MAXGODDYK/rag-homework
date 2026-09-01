@@ -14,15 +14,13 @@ from .rag_service import DesktopRagService
 
 
 FIELD_TO_ENV = {
-    "freemodel_api_key": "FREEMODEL_API_KEY",
-    "openai_api_key": "OPENAI_API_KEY",
-    "freemodel_model": "FREEMODEL_MODEL",
+    "ollama_model": "OLLAMA_MODEL",
 }
 
 
 def _availability(rag: DesktopRagService) -> dict[str, dict[str, object]]:
     result: dict[str, dict[str, object]] = {}
-    for name in ("freemodel", "openai"):
+    for name in ("local",):
         provider = rag.providers.get(name)
         if provider is None:
             result[name] = {"available": False, "reason": "not registered"}
@@ -36,13 +34,9 @@ def public_settings_status(config: JarvisConfig, rag: DesktopRagService) -> dict
     settings = load_settings()
     return {
         "providers": _availability(rag),
-        "configured": {
-            "freemodel_api_key": bool(settings.freemodel_api_key),
-            "openai_api_key": bool(settings.openai_api_key),
-        },
+        "configured": {},
         "models": {
-            "freemodel": settings.freemodel_model,
-            "openai": settings.openai_model,
+            "local": settings.ollama_model,
         },
         "storage": str(config.project_root / ".env"),
     }
@@ -58,7 +52,7 @@ def update_local_settings(config: JarvisConfig, payload: LocalSettingsUpdate) ->
         if value is not None
     } if path.exists() else {}
 
-    updates = payload.model_dump(exclude={"clear"}, exclude_none=True)
+    updates = payload.model_dump(exclude_none=True)
     for field, value in updates.items():
         clean = value.strip()
         if not clean:
@@ -67,11 +61,6 @@ def update_local_settings(config: JarvisConfig, payload: LocalSettingsUpdate) ->
         current[environment_name] = clean
         # Make the new provider immediately available in the current backend process.
         os.environ[environment_name] = clean
-
-    for field in payload.clear:
-        environment_name = FIELD_TO_ENV[field]
-        current.pop(environment_name, None)
-        os.environ.pop(environment_name, None)
 
     temporary = path.with_suffix(".env.tmp")
     body = "\n".join(

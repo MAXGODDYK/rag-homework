@@ -52,6 +52,12 @@ fn jarvis_root() -> PathBuf {
 }
 
 fn bundled_sidecar(app: &tauri::AppHandle) -> Option<PathBuf> {
+    // The desktop shortcut for this local project deliberately uses the
+    // project's Python environment. It includes FAISS, Sentence Transformers
+    // and BGE, whereas the compact installer sidecar is lexical-only.
+    if env::var_os("JARVIS_USE_DEVELOPMENT_PYTHON").is_some() {
+        return None;
+    }
     if let Some(explicit) = env::var_os("JARVIS_SIDECAR_PATH") {
         return Some(PathBuf::from(explicit));
     }
