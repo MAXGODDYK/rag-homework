@@ -159,6 +159,16 @@ fn ensure_backend(
 pub fn run() {
     tauri::Builder::default()
         .manage(BackendState::default())
+        .setup(|app| {
+            let process = spawn_backend(&app.handle()).map_err(std::io::Error::other)?;
+            let state = app.state::<BackendState>();
+            let mut guard = state
+                .0
+                .lock()
+                .map_err(|_| std::io::Error::other("Backend state is poisoned"))?;
+            *guard = Some(process);
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![ensure_backend])
