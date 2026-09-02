@@ -9,6 +9,7 @@ export type Session = {
   project_id?: string | null;
   title: string;
   updated_at: string;
+  archived_at?: string | null;
 };
 
 export type DocumentFile = {

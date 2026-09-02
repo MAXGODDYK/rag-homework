@@ -40,13 +40,15 @@ class JarvisApi {
   }
   connectGoogleSheets() { return this.request<LocalSettingsStatus["google_sheets"]>("/v1/google-sheets/connect", { method: "POST" }); }
   projects() { return this.request<Project[]>("/v1/projects"); }
-  sessions() { return this.request<Session[]>("/v1/sessions"); }
+  sessions(archived = false) { return this.request<Session[]>(`/v1/sessions?archived=${archived}`); }
   createProject(name: string, rootPath?: string) {
     return this.request<Project>("/v1/projects", { method: "POST", body: JSON.stringify({ name, root_path: rootPath || null }) });
   }
   createSession(projectId?: string) {
     return this.request<Session>("/v1/sessions", { method: "POST", body: JSON.stringify({ user_id: "desktop-owner", project_id: projectId || null, title: "New conversation" }) });
   }
+  archiveSession(sessionId: string) { return this.request<Session>(`/v1/sessions/${sessionId}/archive`, { method: "POST" }); }
+  restoreSession(sessionId: string) { return this.request<Session>(`/v1/sessions/${sessionId}/restore`, { method: "POST" }); }
   messages(sessionId: string) { return this.request<Message[]>(`/v1/sessions/${sessionId}/messages`); }
   send(sessionId: string, content: string) {
     return this.request<RagAnswer>(`/v1/messages?session_id=${encodeURIComponent(sessionId)}`, { method: "POST", body: JSON.stringify({ content }) });

@@ -9,7 +9,7 @@ from typing import Any, Iterator
 from .models import new_id, utc_now
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 SCHEMA_SQL = """
@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     title TEXT NOT NULL,
     provider_profile TEXT NOT NULL DEFAULT 'local',
     source_selector TEXT NOT NULL DEFAULT 'auto',
+    archived_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -148,7 +149,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, archived_at, updated_at);
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_documents_scope ON documents(user_id, project_id, status);
 CREATE INDEX IF NOT EXISTS idx_chunks_scope ON chunks(user_id, project_id, document_id);
@@ -180,6 +181,9 @@ class Database:
             columns = {row["name"] for row in connection.execute("PRAGMA table_info(chunks)").fetchall()}
             if "representation" not in columns:
                 connection.execute("ALTER TABLE chunks ADD COLUMN representation TEXT NOT NULL DEFAULT 'classic'")
+            session_columns = {row["name"] for row in connection.execute("PRAGMA table_info(sessions)").fetchall()}
+            if "archived_at" not in session_columns:
+                connection.execute("ALTER TABLE sessions ADD COLUMN archived_at TEXT")
             connection.execute(
                 "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now().isoformat()),
@@ -213,13 +217,56 @@ class Database:
         )
 
     def create_project(self, user_id: str, name: str, root_path: str | None) -> dict[str, Any]:
+        clean_name = " ".join(name.split())
+        if not clean_name:
+            raise ValueError("Project name cannot be empty")
+        normalized_root = None
+        if root_path:
+            normalized_root = str(Path(root_path).expanduser().resolve(strict=False))
+            existing = self.query_one(
+                "SELECT * FROM projects WHERE user_id=? AND lower(root_path)=lower(?) ORDER BY updated_at DESC LIMIT 1",
+                (user_id, normalized_root),
+            )
+            if existing:
+                existing["created"] = False
+                return existing
+        # A project created without a folder still has a stable name, so it
+        # should not appear several times in the navigation either.
+        existing_by_name = self.query_one(
+            "SELECT * FROM projects WHERE user_id=? AND lower(name)=lower(?) ORDER BY updated_at DESC LIMIT 1",
+            (user_id, clean_name),
+        )
+        if existing_by_name:
+            existing_by_name["created"] = False
+            return existing_by_name
         project_id = new_id("project")
         now = utc_now().isoformat()
         self.execute(
             "INSERT INTO projects(id, user_id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (project_id, user_id, name, root_path, now, now),
+            (project_id, user_id, clean_name, normalized_root, now, now),
         )
-        return self.query_one("SELECT * FROM projects WHERE id=?", (project_id,)) or {}
+        created = self.query_one("SELECT * FROM projects WHERE id=?", (project_id,)) or {}
+        created["created"] = True
+        return created
+
+    def list_projects(self, user_id: str) -> list[dict[str, Any]]:
+        """Show one current navigation item for each legacy duplicate root."""
+        rows = self.query_all("SELECT * FROM projects WHERE user_id=? ORDER BY updated_at DESC", (user_id,))
+        seen: set[tuple[str, str]] = set()
+        visible: list[dict[str, Any]] = []
+        for row in rows:
+            if row.get("root_path"):
+                try:
+                    normalized_root = str(Path(str(row["root_path"])).expanduser().resolve(strict=False)).casefold()
+                except OSError:
+                    normalized_root = str(row["root_path"]).casefold()
+                key = ("root", normalized_root)
+            else:
+                key = ("name", str(row["name"]).casefold())
+            if key not in seen:
+                seen.add(key)
+                visible.append(row)
+        return visible
 
     def create_session(self, user_id: str, project_id: str | None, title: str) -> dict[str, Any]:
         session_id = new_id("session")
@@ -229,6 +276,24 @@ class Database:
             (session_id, user_id, project_id, title, now, now),
         )
         return self.query_one("SELECT * FROM sessions WHERE id=?", (session_id,)) or {}
+
+    def list_sessions(self, user_id: str, *, archived: bool = False) -> list[dict[str, Any]]:
+        condition = "archived_at IS NOT NULL" if archived else "archived_at IS NULL"
+        return self.query_all(
+            f"SELECT * FROM sessions WHERE user_id=? AND {condition} ORDER BY updated_at DESC",
+            (user_id,),
+        )
+
+    def set_session_archived(self, session_id: str, user_id: str, *, archived: bool) -> dict[str, Any] | None:
+        session = self.query_one("SELECT * FROM sessions WHERE id=? AND user_id=?", (session_id, user_id))
+        if session is None:
+            return None
+        now = utc_now().isoformat()
+        self.execute(
+            "UPDATE sessions SET archived_at=?, updated_at=? WHERE id=? AND user_id=?",
+            (now if archived else None, now, session_id, user_id),
+        )
+        return self.query_one("SELECT * FROM sessions WHERE id=?", (session_id,))
 
     def add_message(
         self,

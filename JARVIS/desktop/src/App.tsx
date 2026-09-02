@@ -1,7 +1,7 @@
 import Editor from "@monaco-editor/react";
 import { Background, Controls, ReactFlow } from "@xyflow/react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Bot, ChevronRight, CircleDot, Code2, File, FilePlus2, FolderGit2, GitBranch, Network, PanelBottom, Plus, Send, Settings, Sparkles, Upload, X } from "lucide-react";
+import { Archive, ArchiveRestore, Bot, ChevronRight, CircleDot, Code2, Database, File, FilePlus2, FolderGit2, GitBranch, Network, PanelBottom, Plus, Send, Settings, SlidersHorizontal, Sparkles, Upload, X } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import type { ChunkingCategory, ChunkingCategoryMode, ChunkingMode, Citation, DocumentFile, LocalSettingsDraft, LocalSettingsStatus, Message, Project, RagAnswer, Session } from "./types";
@@ -17,14 +17,14 @@ const UI = {
     providerLocal: "Local Qwen3", evidenceOnly: "Evidence only", corpusProject: "Corpus: current project", corpusAll: "Corpus: all projects", file: "File", askFiles: "Ask about imported files", welcome: "JARVIS searches the selected corpus with FTS5, multilingual FAISS and BGE reranking, then shows exact source citations.",
     summarize: "Summarize selected files", searchDocuments: "Search my documents", you: "You", grounded: "Grounded", insufficient: "Insufficient context", retrieving: "Retrieving", searching: "Searching the selected corpus", checkingChanges: "Checking project changes and Google Sheets…", noChanges: "No changes", updatedFiles: "Uploaded / updated {count} files", reindexedFiles: "Reindexed {count} files for chunking policy", removedFiles: "Archived / removed {count} files", rejectedFiles: "{count} files could not be indexed", placeholder: "Ask a question about your imported files…", upload: "Upload files", untrusted: "Imported files are untrusted context. Answers include citations.",
     corpus: "CORPUS", drop: "Drop documents, code or a project archive here", preview: "Preview", useProject: "Use project corpus", graph: "Dependency graph", selectFile: "Select an imported file to inspect its extracted text.",
-    settingsTitle: "Local model and database", settingsSubtitle: "JARVIS uses local Ollama and optional Google Sheets chunks storage.", language: "Interface language", provider: "Answer mode", localModel: "Local Ollama model", googleJson: "Google service-account JSON path", googleOwner: "Google account e-mail for table access", googleConnect: "Create / connect JARVIS DB", googleConnected: "Google Sheets connected", available: "available", notConfigured: "not available", saved: "Saved locally. Local-model availability was refreshed.", desktopOnly: "JARVIS is desktop-only. Imported files and answers stay on this PC.", close: "Close", save: "Save locally", saving: "Saving…", page: "page", modelTab: "Model & database", chunkingTab: "Developer chunking", globalMode: "Global mode", defaultMode: "Default", classicMode: "Classic — cleaned text", developerMode: "Developer — source structure", mixedMode: "Mixed — choose by question", chunkingHint: "Saving changes reindexes each project when it is next queried.",
+    settingsTitle: "JARVIS settings", settingsSubtitle: "Local settings are kept only on this PC.", language: "Interface language", provider: "Answer mode", localModel: "Local Ollama model", googleJson: "Google service-account JSON path", googleOwner: "Google account e-mail for table access", googleConnect: "Create / connect JARVIS DB", googleConnected: "Google Sheets connected", available: "available", notConfigured: "not available", saved: "Saved locally. Local-model availability was refreshed.", desktopOnly: "JARVIS is desktop-only. Imported files and answers stay on this PC.", close: "Close", save: "Save locally", saving: "Saving…", page: "page", generalTab: "General", databaseTab: "Database", chunkingTab: "Developer chunking", archivesTab: "Archived chats", archivedEmpty: "No archived chats.", archiveConversation: "Archive conversation", restoreConversation: "Restore", globalMode: "Global mode", defaultMode: "Default", classicMode: "Classic — cleaned text", developerMode: "Developer — source structure", mixedMode: "Mixed — choose by question", chunkingHint: "Saving changes reindexes each project when it is next queried.",
   },
   ru: {
     newConversation: "Новый диалог", projects: "ПРОЕКТЫ", conversations: "ДИАЛОГИ", settings: "Настройки", importFolder: "Импортировать папку", noProjects: "Проектов пока нет", noProject: "Нет проекта", localFiles: "локальные файлы",
     providerLocal: "Локальная Qwen3", evidenceOnly: "Только источники", corpusProject: "Корпус: текущий проект", corpusAll: "Корпус: все проекты", file: "Файл", askFiles: "Задайте вопрос по импортированным файлам", welcome: "JARVIS ищет в выбранном корпусе через FTS5, многоязычный FAISS и BGE reranking, затем показывает точные ссылки на источники.",
     summarize: "Кратко изложить выбранные файлы", searchDocuments: "Поиск по документам", you: "Вы", grounded: "Ответ по источникам", insufficient: "Недостаточно контекста", retrieving: "Поиск", searching: "Поиск по выбранному корпусу", checkingChanges: "Проверка проекта и Google Sheets…", noChanges: "Изменений нет", updatedFiles: "Отправлено / обновлено файлов: {count}", reindexedFiles: "Переиндексировано файлов по политике chunks: {count}", removedFiles: "Архивировано / удалено файлов: {count}", rejectedFiles: "Не удалось проиндексировать файлов: {count}", placeholder: "Задайте вопрос по импортированным файлам…", upload: "Загрузить файлы", untrusted: "Импортированные файлы — недоверенный контекст. Ответы содержат источники.",
     corpus: "КОРПУС", drop: "Перетащите сюда документы, код или архив проекта", preview: "Предпросмотр", useProject: "Использовать весь проект", graph: "Граф зависимостей", selectFile: "Выберите импортированный файл, чтобы увидеть извлечённый текст.",
-    settingsTitle: "Локальная модель и база", settingsSubtitle: "JARVIS использует локальный Ollama и необязательное Google Sheets-хранилище chunks.", language: "Язык интерфейса", provider: "Режим ответа", localModel: "Локальная модель Ollama", googleJson: "Путь к JSON service account Google", googleOwner: "Google e-mail для доступа к таблице", googleConnect: "Создать / подключить JARVIS DB", googleConnected: "Google Sheets подключены", available: "доступна", notConfigured: "недоступна", saved: "Сохранено локально. Доступность локальной модели обновлена.", desktopOnly: "JARVIS работает только на этом ПК. Импортированные файлы и ответы остаются локально.", close: "Закрыть", save: "Сохранить локально", saving: "Сохранение…", page: "стр.", modelTab: "Модель и база", chunkingTab: "Нарезка chunks для разработчиков", globalMode: "Глобальный режим", defaultMode: "По умолчанию", classicMode: "Classic — очищенный текст", developerMode: "Developer — исходная структура", mixedMode: "Mixed — выбор по вопросу", chunkingHint: "После сохранения каждый проект будет переиндексирован при следующем вопросе.",
+    settingsTitle: "Настройки JARVIS", settingsSubtitle: "Локальные настройки хранятся только на этом ПК.", language: "Язык интерфейса", provider: "Режим ответа", localModel: "Локальная модель Ollama", googleJson: "Путь к JSON service account Google", googleOwner: "Google e-mail для доступа к таблице", googleConnect: "Создать / подключить JARVIS DB", googleConnected: "Google Sheets подключены", available: "доступна", notConfigured: "недоступна", saved: "Сохранено локально. Доступность локальной модели обновлена.", desktopOnly: "JARVIS работает только на этом ПК. Импортированные файлы и ответы остаются локально.", close: "Закрыть", save: "Сохранить локально", saving: "Сохранение…", page: "стр.", generalTab: "Общие", databaseTab: "База данных", chunkingTab: "Нарезка chunks для разработчиков", archivesTab: "Архивированные чаты", archivedEmpty: "Архивированных чатов нет.", archiveConversation: "Архивировать чат", restoreConversation: "Восстановить", globalMode: "Глобальный режим", defaultMode: "По умолчанию", classicMode: "Classic — очищенный текст", developerMode: "Developer — исходная структура", mixedMode: "Mixed — выбор по вопросу", chunkingHint: "После сохранения каждый проект будет переиндексирован при следующем вопросе.",
   },
 } as const;
 
@@ -32,6 +32,7 @@ export function App() {
   const [language, setLanguage] = useState<UiLanguage>(() => (localStorage.getItem("jarvis-ui-language") === "ru" ? "ru" : "en"));
   const [projects, setProjects] = useState<Project[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [archivedSessions, setArchivedSessions] = useState<Session[]>([]);
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [repositoryGraph, setRepositoryGraph] = useState<{ nodes: Array<{ id: string; relative_path: string }>; edges: Array<{ id: string; source_document_id: string; target_ref: string; edge_type: string }> }>({ nodes: [], edges: [] });
   const [activeProject, setActiveProject] = useState<string>();
@@ -58,8 +59,8 @@ export function App() {
 
   const refresh = useCallback(async () => {
     await api.health();
-    const [nextProjects, nextSessions] = await Promise.all([api.projects(), api.sessions()]);
-    setProjects(nextProjects); setSessions(nextSessions);
+    const [nextProjects, nextSessions, nextArchived] = await Promise.all([api.projects(), api.sessions(), api.sessions(true)]);
+    setProjects(nextProjects); setSessions(nextSessions); setArchivedSessions(nextArchived);
     if (!activeProject && nextProjects[0]) setActiveProject(nextProjects[0].id);
     if (!activeSession && nextSessions[0]) setActiveSession(nextSessions[0].id);
   }, [activeProject, activeSession]);
@@ -108,11 +109,26 @@ export function App() {
       if (!selected || Array.isArray(selected)) return;
       const name = selected.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "Imported project";
       const project = await api.createProject(name, selected);
-      setProjects((items) => [project, ...items]); setActiveProject(project.id);
+      setProjects((items) => [project, ...items.filter((item) => item.id !== project.id)]); setActiveProject(project.id);
       await api.importProject(project.id); setFiles(await api.files(project.id)); setRepositoryGraph(await api.graph(project.id));
     } catch (event) { setError(String(event)); }
   }
-  async function openSettings() { setSettingsOpen(true); setSettingsNotice(""); try { setSettingsStatus(await api.settings()); } catch (event) { setError(String(event)); } }
+  async function openSettings() { setSettingsOpen(true); setSettingsNotice(""); try { const [nextStatus, nextArchived] = await Promise.all([api.settings(), api.sessions(true)]); setSettingsStatus(nextStatus); setArchivedSessions(nextArchived); } catch (event) { setError(String(event)); } }
+  async function archiveConversation(sessionId: string) {
+    try {
+      const archived = await api.archiveSession(sessionId);
+      setSessions((items) => items.filter((item) => item.id !== sessionId));
+      setArchivedSessions((items) => [archived, ...items.filter((item) => item.id !== sessionId)]);
+      if (activeSession === sessionId) { const next = sessions.find((item) => item.id !== sessionId); setActiveSession(next?.id); setMessages([]); setAnswer(undefined); }
+    } catch (event) { setError(String(event)); }
+  }
+  async function restoreConversation(sessionId: string) {
+    try {
+      const restored = await api.restoreSession(sessionId);
+      setArchivedSessions((items) => items.filter((item) => item.id !== sessionId));
+      setSessions((items) => [restored, ...items.filter((item) => item.id !== sessionId)]);
+    } catch (event) { setError(String(event)); }
+  }
   async function saveSettings() {
     setBusy(true); setSettingsNotice("");
     try { const next = await api.updateSettings(settingsDraft); setSettingsStatus(next); setSettingsDraft({}); setSettingsNotice(text.saved); }
@@ -160,7 +176,7 @@ export function App() {
       <div className="brand"><div className="mark"><Sparkles size={16}/></div><div><strong>JARVIS</strong><span>DESKTOP RAG</span></div></div>
       <button className="primary" onClick={() => void createConversation()}><Plus size={16}/> {text.newConversation}</button>
       <Section title={text.projects} action={<button className="section-action" onClick={() => void addProject()} title={text.importFolder}><FolderGit2 size={14}/><Plus size={10}/></button>}>{projects.map((project) => <button key={project.id} className={activeProject === project.id ? "nav active" : "nav"} onClick={() => setActiveProject(project.id)}><ChevronRight size={13}/><span>{project.name}</span></button>)}{!projects.length && <p className="empty">{text.noProjects}</p>}</Section>
-      <Section title={text.conversations}>{sessions.map((session) => <button key={session.id} className={activeSession === session.id ? "nav active" : "nav"} onClick={() => setActiveSession(session.id)}><CircleDot size={12}/><span>{session.title}</span></button>)}</Section>
+      <Section title={text.conversations}>{sessions.map((session) => <div className={activeSession === session.id ? "nav-row active" : "nav-row"} key={session.id}><button className="nav" onClick={() => setActiveSession(session.id)}><CircleDot size={12}/><span>{session.title}</span></button><button className="archive-button" title={text.archiveConversation} onClick={() => void archiveConversation(session.id)}><Archive size={13}/></button></div>)}</Section>
       <button className="settings" onClick={() => void openSettings()}><Settings size={16}/> {text.settings}</button>
     </aside>
     <section className="workspace">
@@ -176,15 +192,15 @@ export function App() {
       </div>
       <section className="bottom-panel"><div className="bottom-tabs"><button className="active"><Network size={14}/> {text.graph}</button><button className="collapse"><PanelBottom size={14}/></button></div><div className="graph"><ReactFlow nodes={graph.nodes} edges={graph.edges} fitView><Background color="#292e3a"/><Controls/></ReactFlow></div></section>
     </section>
-    {settingsOpen && <SettingsModal language={language} policy={policy} status={settingsStatus} draft={settingsDraft} notice={settingsNotice} busy={busy} onPolicy={changePolicy} onDraft={setSettingsDraft} onSave={saveSettings} onConnectGoogle={connectGoogleSheets} onClose={() => setSettingsOpen(false)}/>}
+    {settingsOpen && <SettingsModal language={language} policy={policy} status={settingsStatus} draft={settingsDraft} notice={settingsNotice} busy={busy} archivedSessions={archivedSessions} onPolicy={changePolicy} onDraft={setSettingsDraft} onSave={saveSettings} onConnectGoogle={connectGoogleSheets} onRestore={restoreConversation} onClose={() => setSettingsOpen(false)}/>}
   </main>;
 }
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) { return <section className="side-section"><div className="section-label"><span>{title}</span>{action}</div><div className="section-items">{children}</div></section>; }
 function Citations({ items, language }: { items: Citation[]; language: UiLanguage }) { if (!items.length) return null; return <div className="citations">{items.map((item) => <button key={item.chunk_id}><File size={12}/><span>{item.source_path}{item.page ? ` · ${UI[language].page} ${item.page}` : ""}{item.line_start ? ` · L${item.line_start}${item.line_end ? `–${item.line_end}` : ""}` : ""}{item.sheet ? ` · ${item.sheet} ${item.cell_range || ""}` : ""}</span></button>)}</div>; }
 
-function SettingsModal({ language, policy, status, draft, notice, busy, onPolicy, onDraft, onSave, onConnectGoogle, onClose }: { language: UiLanguage; policy: Policy; status?: LocalSettingsStatus; draft: LocalSettingsDraft; notice: string; busy: boolean; onPolicy: (next: Partial<Policy>) => Promise<void>; onDraft: (next: LocalSettingsDraft) => void; onSave: () => Promise<void>; onConnectGoogle: () => Promise<void>; onClose: () => void }) {
-  const [tab, setTab] = useState<"model" | "chunking">("model");
+function SettingsModal({ language, policy, status, draft, notice, busy, archivedSessions, onPolicy, onDraft, onSave, onConnectGoogle, onRestore, onClose }: { language: UiLanguage; policy: Policy; status?: LocalSettingsStatus; draft: LocalSettingsDraft; notice: string; busy: boolean; archivedSessions: Session[]; onPolicy: (next: Partial<Policy>) => Promise<void>; onDraft: (next: LocalSettingsDraft) => void; onSave: () => Promise<void>; onConnectGoogle: () => Promise<void>; onRestore: (sessionId: string) => Promise<void>; onClose: () => void }) {
+  const [tab, setTab] = useState<"general" | "database" | "chunking" | "archives">("general");
   const update = (name: keyof LocalSettingsDraft, value: string) => onDraft({ ...draft, [name]: value });
   const text = UI[language];
   const categories: Array<[ChunkingCategory, string]> = [
@@ -195,9 +211,12 @@ function SettingsModal({ language, policy, status, draft, notice, busy, onPolicy
   const categoryValue = (category: ChunkingCategory) => draft[`chunking_${category}`] ?? status?.chunking?.[category] ?? "default";
   return <div className="modal-backdrop" onClick={onClose}><section className="modal settings-modal" onClick={(event) => event.stopPropagation()}>
     <header><div><h2>{text.settingsTitle}</h2><small>{text.settingsSubtitle}</small></div><button onClick={onClose}><X/></button></header>
-    <div className="settings-tabs"><button className={tab === "model" ? "active" : ""} onClick={() => setTab("model")}>{text.modelTab}</button><button className={tab === "chunking" ? "active" : ""} onClick={() => setTab("chunking")}>{text.chunkingTab}</button></div>
-    {tab === "model" && <><div className="provider-status">{Object.entries(status?.providers || {}).map(([name, value]) => <span key={name} className={value.available ? "available" : "unavailable"}><i/>{name}: {value.available ? text.available : text.notConfigured}</span>)}</div><div className="settings-grid"><label>{text.provider}<select value={policy.provider_profile} onChange={(event) => void onPolicy({ provider_profile: event.target.value as Policy["provider_profile"] })}><option value="local">{text.providerLocal}</option><option value="extractive">{text.evidenceOnly}</option></select></label><label>{text.localModel}<input value={draft.ollama_model ?? status?.models.local ?? "qwen3:14b"} onChange={(event) => update("ollama_model", event.target.value)}/></label><label>{text.googleJson}<input value={draft.google_service_account_path ?? ""} placeholder="C:\\private\\jarvis-service-account.json" onChange={(event) => update("google_service_account_path", event.target.value)}/></label><label>{text.googleOwner}<input value={draft.google_owner_email ?? ""} placeholder="name@gmail.com" onChange={(event) => update("google_owner_email", event.target.value)}/></label></div>{status?.google_sheets?.connected && <p className="settings-notice">{text.googleConnected}</p>}</>}
-    {tab === "chunking" && <div className="settings-grid"><label>{text.globalMode}<select value={draft.chunking_global_mode ?? status?.chunking?.global_mode ?? "classic"} onChange={(event) => update("chunking_global_mode", event.target.value as ChunkingMode)}>{modeOptions(false)}</select></label>{categories.map(([category, label]) => <label key={category}>{label}<select value={categoryValue(category)} onChange={(event) => update(`chunking_${category}` as keyof LocalSettingsDraft, event.target.value as ChunkingCategoryMode)}>{modeOptions(true)}</select></label>)}<p className="settings-notice">{text.chunkingHint}</p></div>}
-    {notice && <p className="settings-notice">{notice}</p>}<p>{text.desktopOnly}</p><footer><button className="ghost" onClick={onClose}>{text.close}</button><button className="ghost" disabled={busy} onClick={() => void onConnectGoogle()}>{text.googleConnect}</button><button className="primary" disabled={busy} onClick={() => void onSave()}>{busy ? text.saving : text.save}</button></footer>
+    <div className="settings-layout"><nav className="settings-tabs"><button className={tab === "general" ? "active" : ""} onClick={() => setTab("general")}><Settings size={14}/>{text.generalTab}</button><button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}><Database size={14}/>{text.databaseTab}</button><button className={tab === "chunking" ? "active" : ""} onClick={() => setTab("chunking")}><SlidersHorizontal size={14}/>{text.chunkingTab}</button><button className={tab === "archives" ? "active" : ""} onClick={() => setTab("archives")}><Archive size={14}/>{text.archivesTab}</button></nav><div className="settings-content">
+      {tab === "general" && <><div className="provider-status">{Object.entries(status?.providers || {}).map(([name, value]) => <span key={name} className={value.available ? "available" : "unavailable"}><i/>{name}: {value.available ? text.available : text.notConfigured}</span>)}</div><div className="settings-grid"><label>{text.provider}<select value={policy.provider_profile} onChange={(event) => void onPolicy({ provider_profile: event.target.value as Policy["provider_profile"] })}><option value="local">{text.providerLocal}</option><option value="extractive">{text.evidenceOnly}</option></select></label><label>{text.localModel}<input value={draft.ollama_model ?? status?.models.local ?? "qwen3:14b"} onChange={(event) => update("ollama_model", event.target.value)}/></label></div></>}
+      {tab === "database" && <><div className="settings-grid"><label>{text.googleJson}<input value={draft.google_service_account_path ?? ""} placeholder="C:\\private\\jarvis-service-account.json" onChange={(event) => update("google_service_account_path", event.target.value)}/></label><label>{text.googleOwner}<input value={draft.google_owner_email ?? ""} placeholder="name@gmail.com" onChange={(event) => update("google_owner_email", event.target.value)}/></label></div>{status?.google_sheets?.connected && <p className="settings-notice">{text.googleConnected}</p>}<button className="ghost settings-connect" disabled={busy} onClick={() => void onConnectGoogle()}>{text.googleConnect}</button></>}
+      {tab === "chunking" && <div className="settings-grid"><label>{text.globalMode}<select value={draft.chunking_global_mode ?? status?.chunking?.global_mode ?? "classic"} onChange={(event) => update("chunking_global_mode", event.target.value as ChunkingMode)}>{modeOptions(false)}</select></label>{categories.map(([category, label]) => <label key={category}>{label}<select value={categoryValue(category)} onChange={(event) => update(`chunking_${category}` as keyof LocalSettingsDraft, event.target.value as ChunkingCategoryMode)}>{modeOptions(true)}</select></label>)}<p className="settings-notice">{text.chunkingHint}</p></div>}
+      {tab === "archives" && <div className="archive-list">{archivedSessions.length ? archivedSessions.map((session) => <div className="archive-item" key={session.id}><div><strong>{session.title}</strong><small>{new Date(session.archived_at || session.updated_at).toLocaleString(language === "ru" ? "ru-RU" : "en-US")}</small></div><button className="ghost" onClick={() => void onRestore(session.id)}><ArchiveRestore size={14}/>{text.restoreConversation}</button></div>) : <p className="empty">{text.archivedEmpty}</p>}</div>}
+      {notice && <p className="settings-notice">{notice}</p>}<p>{text.desktopOnly}</p>
+    </div></div><footer><button className="ghost" onClick={onClose}>{text.close}</button>{tab !== "archives" && <button className="primary" disabled={busy} onClick={() => void onSave()}>{busy ? text.saving : text.save}</button>}</footer>
   </section></div>;
 }

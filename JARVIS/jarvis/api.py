@@ -92,9 +92,7 @@ def create_app(
 
     @app.get("/v1/projects")
     def projects(user_id: str = Depends(authorize)):
-        return runtime.database.query_all(
-            "SELECT * FROM projects WHERE user_id=? ORDER BY updated_at DESC", (user_id,)
-        )
+        return runtime.database.list_projects(user_id)
 
     @app.post("/v1/sessions")
     def create_session(payload: SessionCreate, user_id: str = Depends(authorize)):
@@ -111,15 +109,29 @@ def create_app(
         return session
 
     @app.get("/v1/sessions")
-    def sessions(user_id: str = Depends(authorize)):
-        return runtime.database.query_all(
-            "SELECT * FROM sessions WHERE user_id=? ORDER BY updated_at DESC", (user_id,)
-        )
+    def sessions(archived: bool = Query(False), user_id: str = Depends(authorize)):
+        return runtime.database.list_sessions(user_id, archived=archived)
+
+    @app.post("/v1/sessions/{session_id}/archive")
+    def archive_session(session_id: str, user_id: str = Depends(authorize)):
+        session = runtime.database.set_session_archived(session_id, user_id, archived=True)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        runtime.policies.reset(session_id)
+        return session
+
+    @app.post("/v1/sessions/{session_id}/restore")
+    def restore_session(session_id: str, user_id: str = Depends(authorize)):
+        session = runtime.database.set_session_archived(session_id, user_id, archived=False)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        runtime.policies.reset(session_id)
+        return session
 
     @app.get("/v1/sessions/{session_id}/messages")
     def messages(session_id: str, user_id: str = Depends(authorize)):
         session = runtime.database.query_one(
-            "SELECT id, project_id FROM sessions WHERE id=? AND user_id=?", (session_id, user_id)
+            "SELECT id, project_id, archived_at FROM sessions WHERE id=? AND user_id=?", (session_id, user_id)
         )
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -138,10 +150,12 @@ def create_app(
 
     async def _send_message(session_id: str, payload: MessageCreate, user_id: str):
         session = runtime.database.query_one(
-            "SELECT id FROM sessions WHERE id=? AND user_id=?", (session_id, user_id)
+            "SELECT id, project_id, archived_at FROM sessions WHERE id=? AND user_id=?", (session_id, user_id)
         )
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+        if session["archived_at"]:
+            raise HTTPException(status_code=409, detail="Restore this archived conversation before sending a message")
         await runtime.events.publish(user_id, Event(type="chat.started", session_id=session_id))
         if session["project_id"]:
             await runtime.events.publish(user_id, Event(type="project.syncing", session_id=session_id))
