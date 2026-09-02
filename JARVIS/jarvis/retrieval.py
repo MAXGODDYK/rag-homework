@@ -9,6 +9,7 @@ from config.settings import load_settings
 from jarvis.config import JarvisConfig
 from jarvis.database import Database
 from jarvis.ingestion.service import IngestionService
+from jarvis.ingestion.chunking_policy import load_chunking_policy
 from jarvis.ingestion.vector_index import VectorIndex
 from jarvis.models import Citation
 from jarvis.sheets_store import GoogleSheetsChunkStore, GoogleSheetsError
@@ -53,10 +54,10 @@ class DynamicRetriever:
         results from the selected file and made the file selector misleading.
         """
         if source_selector == "all":
-            query = "SELECT id,project_id,relative_path,display_name FROM documents WHERE user_id=? AND status='ready'"
+            query = "SELECT id,project_id,relative_path,display_name,metadata_json FROM documents WHERE user_id=? AND status='ready'"
             parameters: tuple[object, ...] = (user_id,)
         else:
-            query = "SELECT id,project_id,relative_path,display_name FROM documents WHERE user_id=? AND project_id IS ? AND status='ready'"
+            query = "SELECT id,project_id,relative_path,display_name,metadata_json FROM documents WHERE user_id=? AND project_id IS ? AND status='ready'"
             parameters = (user_id, project_id)
         rows = self.database.query_all(query, parameters)
         if source_selector not in {"auto", "all"}:
@@ -97,16 +98,27 @@ class DynamicRetriever:
         )
         if not documents:
             return []
+        representation = load_chunking_policy().representation_for_query(
+            question, [str(row["relative_path"]) for row in documents]
+        )
+        available_representations: set[str] = set()
+        for document in documents:
+            try:
+                available_representations.update(json.loads(document.get("metadata_json") or "{}").get("representations", []))
+            except (TypeError, json.JSONDecodeError):
+                continue
+        if representation not in available_representations and available_representations:
+            representation = "developer" if "developer" in available_representations else "classic"
         if self.chunk_store.status()["connected"]:
-            return self._search_cloud(question, documents, user_id=user_id, source_selector=source_selector, top_k=top_k, candidate_k=candidate_k, rerank=rerank)
+            return self._search_cloud(question, documents, user_id=user_id, source_selector=source_selector, representation=representation, top_k=top_k, candidate_k=candidate_k, rerank=rerank)
         eligible_document_ids = {row["id"] for row in documents}
         eligible_chunk_ids = {
             row["id"]
             for row in self.database.query_all(
-                "SELECT id FROM chunks WHERE user_id=? AND document_id IN ("
+                "SELECT id FROM chunks WHERE user_id=? AND representation=? AND document_id IN ("
                 + ",".join("?" for _ in eligible_document_ids)
                 + ")",
-                (user_id, *eligible_document_ids),
+                (user_id, representation, *eligible_document_ids),
             )
         }
         if not eligible_chunk_ids:
@@ -188,7 +200,7 @@ class DynamicRetriever:
         return ordered[:top_k]
 
     def _search_cloud(
-        self, question: str, documents: list[dict], *, user_id: str, source_selector: str, top_k: int, candidate_k: int, rerank: bool
+        self, question: str, documents: list[dict], *, user_id: str, source_selector: str, representation: str, top_k: int, candidate_k: int, rerank: bool
     ) -> list[dict]:
         """Retrieve IDs locally, then fetch only those chunks from Google Sheets."""
         del source_selector
@@ -199,8 +211,9 @@ class DynamicRetriever:
         for project_id in dict.fromkeys(row["project_id"] for row in documents):
             vector = VectorIndex(self._project_root(user_id, project_id) / "index", self.embedding_model)
             row_maps[str(project_id)] = vector.remote_rows()
+            variants = vector.representations()
             for chunk_id, _score in vector.search(question, max(100, candidate_k * 5)):
-                if chunk_id not in seen:
+                if variants.get(chunk_id, "classic") == representation and chunk_id not in seen:
                     seen.add(chunk_id)
                     ranked_ids.append(chunk_id)
         if not ranked_ids:
@@ -211,7 +224,7 @@ class DynamicRetriever:
                 chunk_rows = self.chunk_store.fetch_chunks(str(project_id), ranked_ids, row_maps.get(str(project_id), {}))
                 for row in chunk_rows:
                     document = eligible.get(row["document_id"])
-                    if document:
+                    if document and row.get("representation", "classic") == representation:
                         row.update({"project_id": project_id, "user_id": user_id, "display_name": document["display_name"], "media_type": ""})
                         chunks.append(row)
         except GoogleSheetsError:

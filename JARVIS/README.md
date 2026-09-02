@@ -51,6 +51,29 @@ local_state/projects/<project-name>--<short-id>/
 бути процитований. Перед відповіддю інтерфейс показує результат: перевірка,
 відсутність змін, кількість оновлених/видалених або відхилених файлів.
 
+## Режими нарізки chunks
+
+У **Settings → Нарізка chunks для розробників** доступні глобальний режим і
+окремі правила для Code, Web markup, Config/data, Documents, Tables,
+Notebooks та Plain text.
+
+- **Classic** — очищений семантичний текст для пояснень: HTML прибирає теги,
+  metadata, scripts, styles і template-вміст; документи зберігають корисну
+  структуру для citations.
+- **Developer** — source-представлення. Код, HTML/XML, CSS, JSON/YAML/TOML та
+  notebook cells зберігають рядки, відступи, коментарі, теги й атрибути.
+  PDF/Office-файли мають структурований текст із page/slide/sheet/cell metadata,
+  але не внутрішні ZIP/XML або binary bytes.
+- **Mixed** — створює обидва представлення. Перед retrieval explainable router
+  обирає Developer для code/error/tag/config запитів і Classic для summaries та
+  пояснень. Окрема LLM для цього не використовується.
+
+Якщо правило змінене, JARVIS перед наступним питанням переіндексує лише
+відкритий проєкт: попередні chunks потрапляють у history і не беруть участі у
+новому retrieval. Для Code значення **По умолчанию / Default** означає
+Developer. Security-фільтри для `.env`, credentials, private keys, binaries і
+executables діють у кожному режимі.
+
 ## Google Sheets chunks database
 
 Після підключення Google Sheets стає **єдиною постійною текстовою базою**:

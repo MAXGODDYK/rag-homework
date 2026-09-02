@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
+from jarvis.ingestion.chunking import chunk_code, chunk_units
+from jarvis.ingestion.chunking_policy import ChunkingPolicy, category_for_path
+from jarvis.ingestion.parsers import parse_document
+from jarvis.ingestion.service import IngestionService
 from jarvis.ingestion.vector_index import VectorIndex
+
+from helpers import make_config, make_database
 from jarvis.sheets_store import (
     CHUNK_HEADERS,
     FILE_HEADERS,
@@ -61,12 +68,21 @@ def test_google_sheets_chunk_decoder_preserves_citation_fields(tmp_path, monkeyp
 def test_vector_manifest_keeps_remote_row_map_without_chunk_text(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("JARVIS_LEXICAL_ONLY", "1")
     index = VectorIndex(tmp_path / "index", "unused")
-    index.rebuild(["chunk_1"], ["secret chunk text"], remote_rows={"chunk_1": 42})
+    index.rebuild(
+        ["chunk_1"],
+        ["secret chunk text"],
+        remote_rows={"chunk_1": 42},
+        representations={"chunk_1": "developer"},
+        policy_fingerprint="policy-test",
+    )
 
-    manifest = (tmp_path / "index" / "manifest.json").read_text(encoding="utf-8")
+    manifest = json.loads((tmp_path / "index" / "manifest.json").read_text(encoding="utf-8"))
 
-    assert json.loads(manifest)["remote_rows"] == {"chunk_1": 42}
-    assert "secret chunk text" not in manifest
+    assert manifest["remote_rows"] == {"chunk_1": 42}
+    assert manifest["representations"] == {"chunk_1": "developer"}
+    assert manifest["policy_fingerprint"] == "policy-test"
+    assert index.remote_rows() == {"chunk_1": 42}
+    assert "secret chunk text" not in json.dumps(manifest)
 
 
 def test_managed_rows_replace_changed_document_and_archive_old_chunks() -> None:
@@ -91,3 +107,60 @@ def test_managed_rows_replace_changed_document_and_archive_old_chunks() -> None:
     assert [row[1] for row in store.tables["Chunks_Current"][1:]] == ["new"]
     assert [row[1] for row in store.tables["Chunks_History"][1:]] == ["old"]
     assert store.tables["Meta"][1] == ["project:project:revision", "revision-2"]
+
+
+def test_html_classic_is_clean_but_developer_preserves_source(tmp_path) -> None:
+    path = tmp_path / "page.html"
+    path.write_text("<html><head><meta name='x'><style>.a{color:red}</style></head><body><h1>Title</h1><script>alert(1)</script><p>Hello</p></body></html>", encoding="utf-8")
+
+    classic = parse_document(path)
+    developer = parse_document(path, representation="developer")
+    classic_text = "\n".join(unit.text for unit in classic.units)
+    developer_chunks = chunk_code("doc", developer.units[0].text, representation="developer")
+
+    assert "<meta" not in classic_text and "alert(1)" not in classic_text
+    assert "<meta" in developer_chunks[0].text and "<script>" in developer_chunks[0].text
+    assert developer_chunks[0].line_start == 1
+
+
+def test_policy_keeps_code_as_developer_and_routes_mixed_questions() -> None:
+    policy = ChunkingPolicy(global_mode="mixed")
+
+    assert category_for_path(Path("main.py")) == "code"
+    assert policy.representations_for(Path("main.py")) == ("developer",)
+    assert policy.representations_for(Path("page.html")) == ("classic", "developer")
+    assert policy.representation_for_query("Why does this CSS selector fail?", ["page.html"]) == "developer"
+    assert policy.representation_for_query("Summarize the web page", ["page.html"]) == "classic"
+
+
+def test_representations_produce_distinct_chunk_ids() -> None:
+    from jarvis.ingestion.models import ExtractedUnit
+
+    unit = ExtractedUnit(text="A long paragraph about JARVIS.")
+    classic = chunk_units("doc", [unit], representation="classic")
+    developer = chunk_units("doc", [unit], representation="developer", normalize_whitespace=False)
+
+    assert classic[0].chunk_id != developer[0].chunk_id
+    assert classic[0].metadata["representation"] == "classic"
+    assert developer[0].metadata["representation"] == "developer"
+
+
+def test_chunking_policy_change_reindexes_project_on_next_sync(monkeypatch, tmp_path) -> None:
+    config = make_config(tmp_path)
+    database = make_database(config)
+    root = tmp_path / "web-project"
+    root.mkdir()
+    page = root / "page.html"
+    page.write_text("<html><body><h1>Topic</h1><script>const internal = 1</script></body></html>", encoding="utf-8")
+    project = database.create_project("owner", "Web", str(root))
+    service = IngestionService(config, database)
+    monkeypatch.setattr(VectorIndex, "rebuild", lambda self, ids, texts: None)
+
+    first = service.sync_project(user_id="owner", project_id=project["id"])
+    monkeypatch.setenv("JARVIS_CHUNKING_WEB_MARKUP", "mixed")
+    second = service.sync_project(user_id="owner", project_id=project["id"])
+    representations = {row["representation"] for row in database.query_all("SELECT representation FROM chunks WHERE project_id=?", (project["id"],))}
+
+    assert first.added == 1
+    assert second.updated == 1 and second.reindexed == 1
+    assert representations == {"classic", "developer"}

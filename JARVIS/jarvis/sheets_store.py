@@ -24,9 +24,12 @@ SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets"
 DRIVE_API = "https://www.googleapis.com/drive/v3/files"
 
 META_HEADERS = ["key", "value"]
-FILE_HEADERS = ["project_id", "relative_path", "document_id", "sha256", "size_bytes", "source_mtime_ns", "indexed_at", "status", "revision"]
-CHUNK_HEADERS = ["project_id", "chunk_id", "document_id", "relative_path", "ordinal", "text", "metadata_json", "source_sha256", "indexed_at", "page", "heading", "sheet", "cell_range", "line_start", "line_end", "row_version"]
+FILE_HEADERS = ["project_id", "relative_path", "document_id", "sha256", "size_bytes", "source_mtime_ns", "indexed_at", "status", "revision", "policy_fingerprint"]
+CHUNK_HEADERS = ["project_id", "chunk_id", "document_id", "relative_path", "ordinal", "representation", "text", "metadata_json", "source_sha256", "indexed_at", "page", "heading", "sheet", "cell_range", "line_start", "line_end", "row_version", "policy_fingerprint"]
 HISTORY_HEADERS = CHUNK_HEADERS + ["archived_at", "archive_reason"]
+LEGACY_FILE_HEADERS = FILE_HEADERS[:-1]
+LEGACY_CHUNK_HEADERS = [header for header in CHUNK_HEADERS if header not in {"representation", "policy_fingerprint"}]
+LEGACY_HISTORY_HEADERS = LEGACY_CHUNK_HEADERS + ["archived_at", "archive_reason"]
 
 
 class GoogleSheetsError(RuntimeError):
@@ -172,10 +175,21 @@ class GoogleSheetsChunkStore:
             })
         for title, headers in required.items():
             current = self._values_get(f"{title}!1:1")
-            if current and current[0] not in (headers, []):
+            legacy_headers = LEGACY_FILE_HEADERS if title == "Files" else (LEGACY_CHUNK_HEADERS if title == "Chunks_Current" else (LEGACY_HISTORY_HEADERS if title == "Chunks_History" else []))
+            if current and current[0] == legacy_headers:
+                self._migrate_legacy_sheet(title, legacy_headers, headers)
+            elif current and current[0] not in (headers, []):
                 raise GoogleSheetsError("Google Sheets schema was changed outside JARVIS")
             if not current:
                 self._values_update(f"{title}!A1", [headers])
+
+    def _migrate_legacy_sheet(self, title: str, old_headers: list[str], headers: list[str]) -> None:
+        """One-way schema migration without losing existing cloud chunks."""
+        rows = [self._as_mapping(old_headers, row) for row in self._values_get(title)[1:]]
+        for row in rows:
+            row.setdefault("representation", "classic")
+            row.setdefault("policy_fingerprint", "legacy")
+        self._replace_sheet(title, headers, [[row.get(header, "") for header in headers] for row in rows])
 
     def _values_get(self, cell_range: str) -> list[list[str]]:
         data = self._request("GET", f"{SHEETS_API}/{self._spreadsheet_id()}/values/{cell_range}")
@@ -242,7 +256,7 @@ class GoogleSheetsChunkStore:
         return row_map
 
     def fetch_chunks(self, project_id: str, chunk_ids: list[str], row_map: dict[str, int]) -> list[dict[str, Any]]:
-        ranges = [f"Chunks_Current!A{row_map[chunk_id]}:P{row_map[chunk_id]}" for chunk_id in chunk_ids if chunk_id in row_map]
+        ranges = [f"Chunks_Current!A{row_map[chunk_id]}:R{row_map[chunk_id]}" for chunk_id in chunk_ids if chunk_id in row_map]
         if not ranges:
             return []
         query = "&".join(f"ranges={value}" for value in ranges)
@@ -278,6 +292,7 @@ class GoogleSheetsChunkStore:
         return {
             "id": row["chunk_id"], "document_id": row["document_id"], "relative_path": row["relative_path"],
             "ordinal": integer(row["ordinal"]) or 0, "text": row["text"], "metadata_json": json.dumps(metadata, ensure_ascii=False),
+            "representation": row.get("representation", "classic"), "policy_fingerprint": row.get("policy_fingerprint", "legacy"),
             "source_sha256": row.get("source_sha256", ""), "indexed_at": row.get("indexed_at", ""),
             "page": integer(row["page"]), "heading": row["heading"] or None, "sheet": row["sheet"] or None,
             "cell_range": row["cell_range"] or None, "line_start": integer(row["line_start"]), "line_end": integer(row["line_end"]),

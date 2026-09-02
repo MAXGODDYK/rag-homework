@@ -6,9 +6,9 @@ from hashlib import sha256
 from .models import ChunkRecord, ExtractedUnit
 
 
-def _stable_id(document_id: str, ordinal: int, text: str) -> str:
+def _stable_id(document_id: str, representation: str, ordinal: int, text: str) -> str:
     digest = sha256(text.encode("utf-8")).hexdigest()[:12]
-    return f"{document_id}_chunk_{ordinal:05d}_{digest}"
+    return f"{document_id}_{representation}_chunk_{ordinal:05d}_{digest}"
 
 
 def chunk_units(
@@ -16,11 +16,13 @@ def chunk_units(
     units: list[ExtractedUnit],
     target_characters: int = 1200,
     overlap_characters: int = 180,
+    representation: str = "classic",
+    normalize_whitespace: bool = True,
 ) -> list[ChunkRecord]:
     chunks: list[ChunkRecord] = []
     ordinal = 0
     for unit in units:
-        text = re.sub(r"[ \t]+", " ", unit.text).strip()
+        text = (re.sub(r"[ \t]+", " ", unit.text) if normalize_whitespace else unit.text).strip()
         if not text:
             continue
         start = 0
@@ -39,7 +41,7 @@ def chunk_units(
                 ordinal += 1
                 chunks.append(
                     ChunkRecord(
-                        chunk_id=_stable_id(document_id, ordinal, chunk_text),
+                        chunk_id=_stable_id(document_id, representation, ordinal, chunk_text),
                         text=chunk_text,
                         ordinal=ordinal,
                         page=unit.page,
@@ -48,7 +50,7 @@ def chunk_units(
                         cell_range=unit.cell_range,
                         line_start=unit.line_start,
                         line_end=unit.line_end,
-                        metadata=unit.metadata,
+                        metadata={**unit.metadata, "representation": representation},
                     )
                 )
             if end >= len(text):
@@ -62,6 +64,7 @@ def chunk_code(
     text: str,
     target_lines: int = 80,
     overlap_lines: int = 10,
+    representation: str = "developer",
 ) -> list[ChunkRecord]:
     lines = text.splitlines()
     chunks: list[ChunkRecord] = []
@@ -74,12 +77,12 @@ def chunk_code(
             ordinal += 1
             chunks.append(
                 ChunkRecord(
-                    chunk_id=_stable_id(document_id, ordinal, chunk_text),
+                    chunk_id=_stable_id(document_id, representation, ordinal, chunk_text),
                     text=chunk_text,
                     ordinal=ordinal,
                     line_start=start + 1,
                     line_end=end,
-                    metadata={"kind": "code"},
+                    metadata={"kind": "code", "representation": representation},
                 )
             )
         if end >= len(lines):

@@ -79,8 +79,21 @@ def _plain(path: Path) -> ParsedDocument:
     )
 
 
-def _html(path: Path) -> ParsedDocument:
-    soup = BeautifulSoup(_decode(path), "html.parser")
+def _html(path: Path, *, developer: bool = False) -> ParsedDocument:
+    raw = _decode(path)
+    if developer:
+        return ParsedDocument(
+            path=path,
+            media_type="text/html",
+            units=[ExtractedUnit(
+                text=raw,
+                line_start=1,
+                line_end=max(1, len(raw.splitlines())),
+                metadata={"kind": "markup", "representation": "developer"},
+            )],
+            metadata={"representation": "developer"},
+        )
+    soup = BeautifulSoup(raw, "html.parser")
     for element in soup(["script", "style", "noscript", "template"]):
         element.decompose()
     units: list[ExtractedUnit] = []
@@ -261,9 +274,11 @@ PARSERS: dict[str, Callable[[Path], ParsedDocument]] = {
 }
 
 
-def parse_document(path: Path) -> ParsedDocument:
+def parse_document(path: Path, representation: str = "classic") -> ParsedDocument:
     if is_blocked_path(path):
         raise DocumentParseError(f"Blocked file type: {path.name}")
+    if path.suffix.lower() in {".html", ".htm"}:
+        return _html(path, developer=representation == "developer")
     parser = PARSERS.get(path.suffix.lower())
     if parser:
         return parser(path)

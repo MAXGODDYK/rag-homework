@@ -17,6 +17,7 @@ from jarvis.models import new_id, utc_now
 
 from .archives import extract_archive, is_archive
 from .chunking import chunk_code, chunk_units
+from .chunking_policy import category_for_path, load_chunking_policy
 from .parsers import CODE_EXTENSIONS, DocumentParseError, is_blocked_path, is_probably_text, parse_document
 from .repository import analyze_code, language_for_path
 from .vector_index import VectorIndex
@@ -45,6 +46,7 @@ class SyncSummary:
     rejected: int = 0
     unchanged: int = 0
     metadata_refreshed: int = 0
+    reindexed: int = 0
     records: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -188,6 +190,7 @@ class IngestionService:
                 "indexed_at": document_metadata.get("indexed_at", row["indexed_at"]), "page": row["page"],
                 "heading": row["heading"], "sheet": row["sheet"], "cell_range": row["cell_range"],
                 "line_start": row["line_start"], "line_end": row["line_end"],
+                "representation": row.get("representation", "classic"),
             })
         manifest_files: dict[str, Any] = {}
         for document in documents:
@@ -220,9 +223,10 @@ class IngestionService:
                     "relative_path": document["relative_path"], "ordinal": chunk.get("ordinal", 0),
                     "text": chunk.get("text", ""), "metadata_json": json.dumps(metadata, ensure_ascii=False),
                     "source_sha256": document["sha256"], "indexed_at": source_metadata.get("indexed_at", document["updated_at"]),
+                    "representation": chunk.get("representation", metadata.get("representation", "classic")),
                     "page": chunk.get("page") or "", "heading": chunk.get("heading") or "", "sheet": chunk.get("sheet") or "",
                     "cell_range": chunk.get("cell_range") or "", "line_start": chunk.get("line_start") or "", "line_end": chunk.get("line_end") or "",
-                    "row_version": document["sha256"], "archived_at": now, "archive_reason": reason,
+                    "row_version": document["sha256"], "policy_fingerprint": source_metadata.get("chunking_policy", "legacy"), "archived_at": now, "archive_reason": reason,
                 })
             return
         root = self.project_state_root(str(document["user_id"]), document.get("project_id")) / "history"
@@ -233,6 +237,7 @@ class IngestionService:
         payload = [{
             "chunk_id": chunk["id"], "document_id": document["id"], "relative_path": document["relative_path"],
             "ordinal": chunk["ordinal"], "text": chunk["text"], "metadata": self._metadata(chunk),
+            "representation": chunk.get("representation", "classic"),
             "source_sha256": document["sha256"], "source_mtime_ns": source_metadata.get("source_mtime_ns"),
             "archived_at": utc_now().isoformat(),
         } for chunk in chunks]
@@ -253,6 +258,7 @@ class IngestionService:
                 "project_id": project_id or "", "relative_path": row["relative_path"], "document_id": row["id"],
                 "sha256": row["sha256"], "size_bytes": row["size_bytes"], "source_mtime_ns": metadata.get("source_mtime_ns", ""),
                 "indexed_at": metadata.get("indexed_at", row["updated_at"]), "status": row["status"], "revision": revision,
+                "policy_fingerprint": metadata.get("chunking_policy", "legacy"),
             })
         return result
 
@@ -275,11 +281,11 @@ class IngestionService:
                 metadata = self._metadata(document)
                 changed.setdefault(chunk["document_id"], []).append({
                     "project_id": project_id, "chunk_id": chunk["id"], "document_id": chunk["document_id"],
-                    "relative_path": document["relative_path"], "ordinal": chunk["ordinal"], "text": chunk["text"],
+                    "relative_path": document["relative_path"], "ordinal": chunk["ordinal"], "representation": chunk.get("representation", "classic"), "text": chunk["text"],
                     "metadata_json": chunk["metadata_json"], "source_sha256": document["sha256"],
                     "indexed_at": metadata.get("indexed_at", document["updated_at"]), "page": chunk["page"] or "",
                     "heading": chunk["heading"] or "", "sheet": chunk["sheet"] or "", "cell_range": chunk["cell_range"] or "",
-                    "line_start": chunk["line_start"] or "", "line_end": chunk["line_end"] or "", "row_version": document["sha256"],
+                    "line_start": chunk["line_start"] or "", "line_end": chunk["line_end"] or "", "row_version": document["sha256"], "policy_fingerprint": metadata.get("chunking_policy", "legacy"),
                 })
             row_map = self.chunk_store.write_project_state(
                 project_id=project_id, files=self._cloud_file_rows(user_id, project_id, revision),
@@ -383,6 +389,7 @@ class IngestionService:
         if not root_path.is_dir():
             raise IngestionError("Project folder is unavailable")
         candidates = self._project_candidates(root_path)
+        policy_fingerprint = load_chunking_policy().fingerprint
         existing_rows = self.database.query_all("SELECT * FROM documents WHERE user_id=? AND project_id IS ? ORDER BY updated_at DESC", (user_id, project_id))
         existing = {row["relative_path"]: row for row in existing_rows}
         seen: set[str] = set()
@@ -393,7 +400,8 @@ class IngestionService:
             row = existing.get(relative)
             stat = path.stat()
             metadata = self._metadata(row) if row else {}
-            if row and row["status"] == "ready" and metadata.get("source_size_bytes") == stat.st_size and metadata.get("source_mtime_ns") == stat.st_mtime_ns:
+            policy_changed = bool(row and metadata.get("chunking_policy") != policy_fingerprint)
+            if row and row["status"] == "ready" and not policy_changed and metadata.get("source_size_bytes") == stat.st_size and metadata.get("source_mtime_ns") == stat.st_mtime_ns:
                 summary.unchanged += 1
                 continue
             try:
@@ -406,6 +414,7 @@ class IngestionService:
                     summary.added += 1
                 else:
                     summary.updated += 1
+                    summary.reindexed += int(policy_changed)
             elif record["status"] == "unchanged":
                 summary.unchanged += 1
                 summary.metadata_refreshed += int(record.get("metadata_refreshed", False))
@@ -471,25 +480,43 @@ class IngestionService:
     def _ingest_document(self, path: Path, user_id: str, project_id: str | None, relative_path: str, *, existing: dict[str, Any] | None = None) -> dict:
         stat, sha, now = path.stat(), _sha256(path), utc_now().isoformat()
         existing = existing or self.database.query_one("SELECT * FROM documents WHERE user_id=? AND project_id IS ? AND relative_path=? ORDER BY updated_at DESC LIMIT 1", (user_id, project_id, relative_path))
-        if existing and existing["sha256"] == sha and existing["status"] == "ready":
+        policy = load_chunking_policy()
+        category = category_for_path(path)
+        if existing and existing["sha256"] == sha and existing["status"] == "ready" and self._metadata(existing).get("chunking_policy") == policy.fingerprint:
             metadata = self._metadata(existing)
             metadata.update({"source_size_bytes": stat.st_size, "source_mtime_ns": stat.st_mtime_ns, "indexed_at": metadata.get("indexed_at", existing["updated_at"])})
             self.database.execute("UPDATE documents SET original_path=?, size_bytes=?, metadata_json=?, updated_at=? WHERE id=?", (str(path), stat.st_size, json.dumps(metadata, ensure_ascii=False), now, existing["id"]))
             return {"document_id": existing["id"], "path": relative_path, "status": "unchanged", "metadata_refreshed": True}
-        parsed = parse_document(path)
         document_id = existing["id"] if existing else new_id("document")
         if existing:
-            self._archive_document(existing, reason="source_changed")
+            self._archive_document(existing, reason="source_changed" if existing["sha256"] != sha else "chunking_policy_changed")
         extracted_dir = self.project_state_root(user_id, project_id) / "text"
         extracted_dir.mkdir(parents=True, exist_ok=True)
         extracted_path = extracted_dir / f"{document_id}_{sha[:12]}.txt"
-        full_text = "\n\n".join(unit.text for unit in parsed.units if unit.text.strip())
-        extracted_path.write_text(full_text, encoding="utf-8")
-        is_code = path.suffix.lower() in CODE_EXTENSIONS or parsed.metadata.get("kind") == "code"
-        chunks = chunk_code(document_id, full_text) if is_code else chunk_units(document_id, parsed.units)
-        symbols, edges = analyze_code(path, full_text) if is_code else ([], [])
-        metadata = dict(parsed.metadata)
-        metadata.update({"source_size_bytes": stat.st_size, "source_mtime_ns": stat.st_mtime_ns, "indexed_at": now})
+        chunks = []
+        extracted_versions: list[str] = []
+        document_metadata: dict[str, Any] = {}
+        for representation in policy.representations_for(path):
+            # Keep the classic call compatible with the existing parser API;
+            # only developer-capable parsers need the explicit variant.
+            parsed = parse_document(path) if representation == "classic" else parse_document(path, representation=representation)
+            full_text = "\n\n".join(unit.text for unit in parsed.units if unit.text.strip())
+            extracted_versions.append(f"[{representation}]\n{full_text}")
+            source_form = representation == "developer" and category in {"code", "web_markup", "config_data", "notebooks", "plain_text"}
+            if source_form:
+                chunks.extend(chunk_code(document_id, full_text, representation=representation))
+            else:
+                chunks.extend(chunk_units(document_id, parsed.units, representation=representation, normalize_whitespace=representation == "classic"))
+            document_metadata.update(parsed.metadata)
+        extracted_path.write_text("\n\n".join(extracted_versions), encoding="utf-8")
+        analysis_text = next(
+            (text.split("\n", 1)[1] for text in extracted_versions if text.startswith("[developer]")),
+            extracted_versions[0].split("\n", 1)[-1] if extracted_versions else "",
+        )
+        is_code = category == "code"
+        symbols, edges = analyze_code(path, analysis_text) if is_code else ([], [])
+        metadata = dict(document_metadata)
+        metadata.update({"source_size_bytes": stat.st_size, "source_mtime_ns": stat.st_mtime_ns, "indexed_at": now, "chunking_policy": policy.fingerprint, "chunking_category": category, "representations": list(policy.representations_for(path))})
         with self.database.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
@@ -503,7 +530,8 @@ class IngestionService:
                     connection.execute("INSERT INTO documents(id,user_id,project_id,display_name,relative_path,media_type,language,sha256,original_path,size_bytes,status,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'ready',?,?,?)", (document_id, user_id, project_id, path.name, relative_path, parsed.media_type, language_for_path(path), sha, str(path), stat.st_size, json.dumps(metadata, ensure_ascii=False), now, now))
                 connection.execute("INSERT INTO document_versions(id,document_id,sha256,extracted_text_path,created_at) VALUES(?,?,?,?,?)", (new_id("version"), document_id, sha, str(extracted_path), now))
                 for chunk in chunks:
-                    connection.execute("INSERT INTO chunks(id,document_id,project_id,user_id,ordinal,text,token_estimate,page,heading,sheet,cell_range,line_start,line_end,metadata_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (chunk.chunk_id, document_id, project_id, user_id, chunk.ordinal, chunk.text, max(1, len(chunk.text) // 4), chunk.page, chunk.heading, chunk.sheet, chunk.cell_range, chunk.line_start, chunk.line_end, json.dumps(chunk.metadata, ensure_ascii=False)))
+                    representation = str(chunk.metadata.get("representation", "classic"))
+                    connection.execute("INSERT INTO chunks(id,document_id,project_id,user_id,ordinal,text,token_estimate,page,heading,sheet,cell_range,line_start,line_end,representation,metadata_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (chunk.chunk_id, document_id, project_id, user_id, chunk.ordinal, chunk.text, max(1, len(chunk.text) // 4), chunk.page, chunk.heading, chunk.sheet, chunk.cell_range, chunk.line_start, chunk.line_end, representation, json.dumps(chunk.metadata, ensure_ascii=False)))
                     connection.execute("INSERT INTO chunks_fts(chunk_id,user_id,project_id,text) VALUES(?,?,?,?)", (chunk.chunk_id, user_id, project_id or "", chunk.text))
                 for symbol in symbols if project_id else []:
                     connection.execute("INSERT INTO symbols(id,document_id,project_id,name,kind,qualified_name,line_start,line_end,metadata_json) VALUES(?,?,?,?,?,?,?,?,?)", (new_id("symbol"), document_id, project_id, symbol.name, symbol.kind, symbol.qualified_name, symbol.line_start, symbol.line_end, json.dumps(symbol.metadata, ensure_ascii=False)))
@@ -516,6 +544,7 @@ class IngestionService:
         return {"document_id": document_id, "path": relative_path, "status": "ready", "created": existing is None, "chunks": len(chunks), "symbols": len(symbols), "edges": len(edges)}
 
     def rebuild_vector_index(self, user_id: str, project_id: str | None) -> None:
+        policy_fingerprint = load_chunking_policy().fingerprint
         if self.cloud_chunks_enabled and project_id:
             try:
                 if not self.chunk_store.status()["connected"]:
@@ -524,11 +553,19 @@ class IngestionService:
             except GoogleSheetsError as error:
                 raise IngestionError("Google Sheets is unavailable; vector cache was not rebuilt") from error
             root = self.project_state_root(user_id, project_id) / "index"
-            VectorIndex(root, self.embedding_model).rebuild([row["id"] for row in rows], [row["text"] for row in rows], remote_rows=row_map)
+            index = VectorIndex(root, self.embedding_model)
+            # Keep the basic rebuild signature stable: diagnostic/test
+            # adapters may implement the original three-argument method.
+            index.rebuild([row["id"] for row in rows], [row["text"] for row in rows], remote_rows=row_map)
+            index.set_representations({row["id"]: row.get("representation", "classic") for row in rows})
+            index.set_policy_fingerprint(policy_fingerprint)
             return
-        rows = self.database.query_all("SELECT c.id,c.text FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.user_id=? AND c.project_id IS ? AND d.status='ready' ORDER BY c.document_id,c.ordinal", (user_id, project_id))
+        rows = self.database.query_all("SELECT c.id,c.text,c.representation FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.user_id=? AND c.project_id IS ? AND d.status='ready' ORDER BY c.document_id,c.ordinal", (user_id, project_id))
         root = self.project_state_root(user_id, project_id) / "index"
-        VectorIndex(root, self.embedding_model).rebuild([row["id"] for row in rows], [row["text"] for row in rows])
+        index = VectorIndex(root, self.embedding_model)
+        index.rebuild([row["id"] for row in rows], [row["text"] for row in rows])
+        index.set_representations({row["id"]: row["representation"] for row in rows})
+        index.set_policy_fingerprint(policy_fingerprint)
 
     def delete_document(self, document_id: str, *, user_id: str) -> None:
         document = self.database.query_one("SELECT * FROM documents WHERE id=? AND user_id=?", (document_id, user_id))

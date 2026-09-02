@@ -50,7 +50,15 @@ class VectorIndex:
             )
         return np.asarray(vectors, dtype=np.float32)
 
-    def rebuild(self, chunk_ids: list[str], texts: list[str], *, remote_rows: dict[str, int] | None = None) -> None:
+    def rebuild(
+        self,
+        chunk_ids: list[str],
+        texts: list[str],
+        *,
+        remote_rows: dict[str, int] | None = None,
+        representations: dict[str, str] | None = None,
+        policy_fingerprint: str | None = None,
+    ) -> None:
         if len(chunk_ids) != len(texts):
             raise VectorIndexError("chunk_ids/texts length mismatch")
         self.root.mkdir(parents=True, exist_ok=True)
@@ -65,7 +73,10 @@ class VectorIndex:
                         "dimension": 0,
                         "count": 0,
                         "metric": "fts5-only", "index_type": "disabled",
-                        "chunk_ids": [], "remote_rows": remote_rows or {},
+                        "chunk_ids": [],
+                        "remote_rows": remote_rows or {},
+                        "representations": representations or {},
+                        "policy_fingerprint": policy_fingerprint or "legacy",
                     },
                     ensure_ascii=False,
                     indent=2,
@@ -120,6 +131,8 @@ class VectorIndex:
             "chunk_ids": chunk_ids,
             # The map has IDs and Google Sheet row numbers only, never chunk text.
             "remote_rows": remote_rows or {},
+            "representations": representations or {},
+            "policy_fingerprint": policy_fingerprint or "legacy",
         }
         (self.root / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -134,12 +147,41 @@ class VectorIndex:
         manifest["remote_rows"] = remote_rows
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    def set_representations(self, representations: dict[str, str]) -> None:
+        manifest_path = self.root / "manifest.json"
+        if not manifest_path.exists():
+            return
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["representations"] = representations
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def set_policy_fingerprint(self, policy_fingerprint: str) -> None:
+        """Record the chunking policy that produced this text-free cache."""
+        manifest_path = self.root / "manifest.json"
+        if not manifest_path.exists():
+            return
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["policy_fingerprint"] = policy_fingerprint
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
     def remote_rows(self) -> dict[str, int]:
         manifest_path = self.root / "manifest.json"
         if not manifest_path.exists():
             return {}
         try:
-            return {str(key): int(value) for key, value in json.loads(manifest_path.read_text(encoding="utf-8")).get("remote_rows", {}).items()}
+            return {
+                str(key): int(value)
+                for key, value in json.loads(manifest_path.read_text(encoding="utf-8")).get("remote_rows", {}).items()
+            }
+        except (OSError, ValueError, json.JSONDecodeError):
+            return {}
+
+    def representations(self) -> dict[str, str]:
+        manifest_path = self.root / "manifest.json"
+        if not manifest_path.exists():
+            return {}
+        try:
+            return {str(key): str(value) for key, value in json.loads(manifest_path.read_text(encoding="utf-8")).get("representations", {}).items()}
         except (OSError, ValueError, json.JSONDecodeError):
             return {}
 

@@ -11,12 +11,15 @@ from config.settings import load_settings
 from .config import JarvisConfig
 from .models import LocalSettingsUpdate
 from .rag_service import DesktopRagService
+from .ingestion.chunking_policy import CATEGORIES, load_chunking_policy
 
 
 FIELD_TO_ENV = {
     "ollama_model": "OLLAMA_MODEL",
     "google_service_account_path": "JARVIS_GOOGLE_SERVICE_ACCOUNT_PATH",
     "google_owner_email": "JARVIS_GOOGLE_OWNER_EMAIL",
+    "chunking_global_mode": "JARVIS_CHUNKING_GLOBAL_MODE",
+    **{f"chunking_{category}": f"JARVIS_CHUNKING_{category.upper()}" for category in CATEGORIES},
 }
 
 
@@ -43,6 +46,7 @@ def public_settings_status(config: JarvisConfig, rag: DesktopRagService) -> dict
         },
         "storage": str(config.project_root / ".env"),
         "google_sheets": GoogleSheetsChunkStore(config.project_root).status(),
+        "chunking": {"global_mode": load_chunking_policy().global_mode, **{category: getattr(load_chunking_policy(), category) for category in CATEGORIES}},
     }
 
 

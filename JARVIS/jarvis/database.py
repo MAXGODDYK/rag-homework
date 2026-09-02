@@ -9,7 +9,7 @@ from typing import Any, Iterator
 from .models import new_id, utc_now
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 SCHEMA_SQL = """
@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     line_start INTEGER,
     line_end INTEGER,
     embedding_profile TEXT NOT NULL DEFAULT 'multilingual-384',
+    representation TEXT NOT NULL DEFAULT 'classic',
     metadata_json TEXT NOT NULL DEFAULT '{}'
 );
 
@@ -176,6 +177,9 @@ class Database:
     def initialize(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA_SQL)
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(chunks)").fetchall()}
+            if "representation" not in columns:
+                connection.execute("ALTER TABLE chunks ADD COLUMN representation TEXT NOT NULL DEFAULT 'classic'")
             connection.execute(
                 "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now().isoformat()),

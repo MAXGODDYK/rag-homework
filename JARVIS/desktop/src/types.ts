@@ -64,10 +64,23 @@ export type LocalSettingsStatus = {
   models: { local: string };
   storage: string;
   google_sheets?: { configured: boolean; connected: boolean; spreadsheet_id?: string | null; spreadsheet_url?: string | null };
+  chunking?: { global_mode: ChunkingMode } & Record<ChunkingCategory, ChunkingCategoryMode>;
 };
+
+export type ChunkingMode = "classic" | "developer" | "mixed";
+export type ChunkingCategoryMode = "default" | ChunkingMode;
+export type ChunkingCategory = "code" | "web_markup" | "config_data" | "documents" | "tables" | "notebooks" | "plain_text";
 
 export type LocalSettingsDraft = {
   ollama_model?: string;
   google_service_account_path?: string;
   google_owner_email?: string;
+  chunking_global_mode?: ChunkingMode;
+  chunking_code?: ChunkingCategoryMode;
+  chunking_web_markup?: ChunkingCategoryMode;
+  chunking_config_data?: ChunkingCategoryMode;
+  chunking_documents?: ChunkingCategoryMode;
+  chunking_tables?: ChunkingCategoryMode;
+  chunking_notebooks?: ChunkingCategoryMode;
+  chunking_plain_text?: ChunkingCategoryMode;
 };
