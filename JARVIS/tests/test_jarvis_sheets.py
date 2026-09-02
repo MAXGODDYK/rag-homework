@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
+
 from jarvis.ingestion.chunking import chunk_code, chunk_units
 from jarvis.ingestion.chunking_policy import ChunkingPolicy, category_for_path
 from jarvis.ingestion.parsers import parse_document
@@ -83,6 +85,20 @@ def test_vector_manifest_keeps_remote_row_map_without_chunk_text(tmp_path, monke
     assert manifest["policy_fingerprint"] == "policy-test"
     assert index.remote_rows() == {"chunk_1": 42}
     assert "secret chunk text" not in json.dumps(manifest)
+
+
+def test_vector_index_supports_non_ascii_project_paths(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("JARVIS_LEXICAL_ONLY", raising=False)
+    index = VectorIndex(tmp_path / "проєкт" / "index", "unused")
+    monkeypatch.setattr(
+        index,
+        "encode",
+        lambda texts: np.ones((len(texts), 4), dtype=np.float32),
+    )
+
+    index.rebuild(["chunk_1"], ["indexed text"])
+
+    assert index.search("question", 1) == [("chunk_1", 4.0)]
 
 
 def test_managed_rows_replace_changed_document_and_archive_old_chunks() -> None:

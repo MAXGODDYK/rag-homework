@@ -13,6 +13,27 @@ class VectorIndexError(RuntimeError):
     pass
 
 
+def _faiss_native_path(path: Path) -> str:
+    """Return an ASCII Windows path for FAISS' narrow-character file API."""
+    if os.name != "nt" or str(path).isascii():
+        return str(path)
+    try:
+        import ctypes
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = ctypes.windll.kernel32.GetShortPathNameW(
+            str(path.parent), buffer, len(buffer)
+        )
+        if 0 < length < len(buffer):
+            candidate = str(Path(buffer.value) / path.name)
+            if candidate.isascii():
+                return candidate
+    except (AttributeError, OSError, ValueError):
+        pass
+    return str(path)
+
+
 class VectorIndex:
     # FlatIP is exact and simple for normal desktop projects.  Above this
     # point an IVF-PQ index keeps its inverted lists in a separate on-disk
@@ -105,7 +126,9 @@ class VectorIndex:
                 ivf_path = self.root / "ivf_lists.bin"
                 ivf_path.unlink(missing_ok=True)
                 index.replace_invlists(
-                    faiss.OnDiskInvertedLists(index.nlist, index.code_size, str(ivf_path)),
+                    faiss.OnDiskInvertedLists(
+                        index.nlist, index.code_size, _faiss_native_path(ivf_path)
+                    ),
                     True,
                 )
                 index.add(vectors)
@@ -116,7 +139,7 @@ class VectorIndex:
                 index.add(vectors)
                 (self.root / "ivf_lists.bin").unlink(missing_ok=True)
                 index_type = "flatip"
-            faiss.write_index(index, str(self.root / "faiss.index"))
+            faiss.write_index(index, _faiss_native_path(self.root / "faiss.index"))
         else:
             (self.root / "faiss.index").unlink(missing_ok=True)
             (self.root / "ivf_lists.bin").unlink(missing_ok=True)
@@ -194,7 +217,7 @@ class VectorIndex:
             return []
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         flags = faiss.IO_FLAG_MMAP if manifest.get("index_type") == "ivfpq_mmap" else 0
-        index = faiss.read_index(str(index_path), flags)
+        index = faiss.read_index(_faiss_native_path(index_path), flags)
         try:
             if index.ntotal != len(manifest["chunk_ids"]):
                 raise VectorIndexError("FAISS/manifest mismatch")
