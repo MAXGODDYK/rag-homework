@@ -229,16 +229,14 @@ class Database:
             )
             if existing:
                 existing["created"] = False
+                existing["alias_ids"] = [
+                    str(row["id"])
+                    for row in self.query_all(
+                        "SELECT id FROM projects WHERE user_id=? AND lower(root_path)=lower(?) ORDER BY updated_at DESC",
+                        (user_id, normalized_root),
+                    )
+                ]
                 return existing
-        # A project created without a folder still has a stable name, so it
-        # should not appear several times in the navigation either.
-        existing_by_name = self.query_one(
-            "SELECT * FROM projects WHERE user_id=? AND lower(name)=lower(?) ORDER BY updated_at DESC LIMIT 1",
-            (user_id, clean_name),
-        )
-        if existing_by_name:
-            existing_by_name["created"] = False
-            return existing_by_name
         project_id = new_id("project")
         now = utc_now().isoformat()
         self.execute(
@@ -247,13 +245,13 @@ class Database:
         )
         created = self.query_one("SELECT * FROM projects WHERE id=?", (project_id,)) or {}
         created["created"] = True
+        created["alias_ids"] = [project_id]
         return created
 
     def list_projects(self, user_id: str) -> list[dict[str, Any]]:
         """Show one current navigation item for each legacy duplicate root."""
         rows = self.query_all("SELECT * FROM projects WHERE user_id=? ORDER BY updated_at DESC", (user_id,))
-        seen: set[tuple[str, str]] = set()
-        visible: list[dict[str, Any]] = []
+        grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
         for row in rows:
             if row.get("root_path"):
                 try:
@@ -263,9 +261,12 @@ class Database:
                 key = ("root", normalized_root)
             else:
                 key = ("name", str(row["name"]).casefold())
-            if key not in seen:
-                seen.add(key)
-                visible.append(row)
+            grouped.setdefault(key, []).append(row)
+        visible: list[dict[str, Any]] = []
+        for members in grouped.values():
+            primary = dict(members[0])
+            primary["alias_ids"] = [str(member["id"]) for member in members]
+            visible.append(primary)
         return visible
 
     def create_session(self, user_id: str, project_id: str | None, title: str) -> dict[str, Any]:
@@ -292,6 +293,21 @@ class Database:
         self.execute(
             "UPDATE sessions SET archived_at=?, updated_at=? WHERE id=? AND user_id=?",
             (now if archived else None, now, session_id, user_id),
+        )
+        return self.query_one("SELECT * FROM sessions WHERE id=?", (session_id,))
+
+    def rename_session(self, session_id: str, user_id: str, title: str) -> dict[str, Any] | None:
+        clean_title = " ".join(title.split())
+        if not clean_title:
+            raise ValueError("Conversation title cannot be empty")
+        if len(clean_title) > 200:
+            raise ValueError("Conversation title is too long")
+        session = self.query_one("SELECT id FROM sessions WHERE id=? AND user_id=?", (session_id, user_id))
+        if session is None:
+            return None
+        self.execute(
+            "UPDATE sessions SET title=?, updated_at=? WHERE id=? AND user_id=?",
+            (clean_title, utc_now().isoformat(), session_id, user_id),
         )
         return self.query_one("SELECT * FROM sessions WHERE id=?", (session_id,))
 

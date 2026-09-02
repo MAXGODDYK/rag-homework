@@ -10,7 +10,7 @@ import aiofiles
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from .models import Event, LocalSettingsUpdate, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy
+from .models import Event, LocalSettingsUpdate, MessageCreate, ProjectCreate, SessionCreate, SessionPolicy, SessionRename
 from .ingestion.service import IngestionError
 from .rag_service import RagServiceError
 from .runtime import Runtime, build_runtime
@@ -44,7 +44,7 @@ def create_app(
             "http://localhost:1420",
             "http://127.0.0.1:1420",
         ],
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "X-Jarvis-Token"],
     )
 
@@ -126,6 +126,16 @@ def create_app(
         if session is None:
             raise HTTPException(status_code=404, detail="Conversation not found")
         runtime.policies.reset(session_id)
+        return session
+
+    @app.patch("/v1/sessions/{session_id}")
+    def rename_session(session_id: str, payload: SessionRename, user_id: str = Depends(authorize)):
+        try:
+            session = runtime.database.rename_session(session_id, user_id, payload.title)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        if session is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
         return session
 
     @app.get("/v1/sessions/{session_id}/messages")

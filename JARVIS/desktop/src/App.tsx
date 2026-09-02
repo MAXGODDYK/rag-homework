@@ -1,7 +1,7 @@
 import Editor from "@monaco-editor/react";
 import { Background, Controls, ReactFlow } from "@xyflow/react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Bot, ChevronRight, CircleDot, Code2, Database, File, FilePlus2, FolderGit2, GitBranch, Network, PanelBottom, Plus, Send, Settings, SlidersHorizontal, Sparkles, Upload, X } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Bot, ChevronDown, ChevronRight, CircleDot, Code2, Database, File, FilePlus2, Folder, FolderGit2, GitBranch, MoreHorizontal, Network, PanelBottom, Pencil, Plus, Search, Send, Settings, SlidersHorizontal, Sparkles, Upload, X } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import type { ChunkingCategory, ChunkingCategoryMode, ChunkingMode, Citation, DocumentFile, LocalSettingsDraft, LocalSettingsStatus, Message, Project, RagAnswer, Session } from "./types";
@@ -13,20 +13,24 @@ type UiLanguage = "en" | "ru";
 
 const UI = {
   en: {
-    newConversation: "New conversation", projects: "PROJECTS", conversations: "CONVERSATIONS", settings: "Settings", importFolder: "Import a folder", noProjects: "No projects yet", noProject: "No project", localFiles: "local files",
+    newConversation: "New conversation", projects: "PROJECTS", conversations: "CONVERSATIONS", settings: "Settings", importFolder: "Import a folder", noProjects: "No projects yet", noProject: "No project", localFiles: "local files", backToApp: "Back to JARVIS", searchSettings: "Search settings…", modelRagTab: "Model & RAG", renameConversation: "Rename", renamePrompt: "Conversation name", projectHasNoChats: "No conversations yet", settingsNoResults: "No settings found",
     providerLocal: "Local Qwen3", evidenceOnly: "Evidence only", corpusProject: "Corpus: current project", corpusAll: "Corpus: all projects", file: "File", askFiles: "Ask about imported files", welcome: "JARVIS searches the selected corpus with FTS5, multilingual FAISS and BGE reranking, then shows exact source citations.",
     summarize: "Summarize selected files", searchDocuments: "Search my documents", you: "You", grounded: "Grounded", insufficient: "Insufficient context", retrieving: "Retrieving", searching: "Searching the selected corpus", checkingChanges: "Checking project changes and Google Sheets…", noChanges: "No changes", updatedFiles: "Uploaded / updated {count} files", reindexedFiles: "Reindexed {count} files for chunking policy", removedFiles: "Archived / removed {count} files", rejectedFiles: "{count} files could not be indexed", placeholder: "Ask a question about your imported files…", upload: "Upload files", untrusted: "Imported files are untrusted context. Answers include citations.",
     corpus: "CORPUS", drop: "Drop documents, code or a project archive here", preview: "Preview", useProject: "Use project corpus", graph: "Dependency graph", selectFile: "Select an imported file to inspect its extracted text.",
     settingsTitle: "JARVIS settings", settingsSubtitle: "Local settings are kept only on this PC.", language: "Interface language", provider: "Answer mode", localModel: "Local Ollama model", googleJson: "Google service-account JSON path", googleOwner: "Google account e-mail for table access", googleConnect: "Create / connect JARVIS DB", googleConnected: "Google Sheets connected", available: "available", notConfigured: "not available", saved: "Saved locally. Local-model availability was refreshed.", desktopOnly: "JARVIS is desktop-only. Imported files and answers stay on this PC.", close: "Close", save: "Save locally", saving: "Saving…", page: "page", generalTab: "General", databaseTab: "Database", chunkingTab: "Developer chunking", archivesTab: "Archived chats", archivedEmpty: "No archived chats.", archiveConversation: "Archive conversation", restoreConversation: "Restore", globalMode: "Global mode", defaultMode: "Default", classicMode: "Classic — cleaned text", developerMode: "Developer — source structure", mixedMode: "Mixed — choose by question", chunkingHint: "Saving changes reindexes each project when it is next queried.",
   },
   ru: {
-    newConversation: "Новый диалог", projects: "ПРОЕКТЫ", conversations: "ДИАЛОГИ", settings: "Настройки", importFolder: "Импортировать папку", noProjects: "Проектов пока нет", noProject: "Нет проекта", localFiles: "локальные файлы",
+    newConversation: "Новый диалог", projects: "ПРОЕКТЫ", conversations: "ДИАЛОГИ", settings: "Настройки", importFolder: "Импортировать папку", noProjects: "Проектов пока нет", noProject: "Нет проекта", localFiles: "локальные файлы", backToApp: "Вернуться в JARVIS", searchSettings: "Поиск настроек…", modelRagTab: "Модель и RAG", renameConversation: "Переименовать", renamePrompt: "Название чата", projectHasNoChats: "Диалогов пока нет", settingsNoResults: "Настройки не найдены",
     providerLocal: "Локальная Qwen3", evidenceOnly: "Только источники", corpusProject: "Корпус: текущий проект", corpusAll: "Корпус: все проекты", file: "Файл", askFiles: "Задайте вопрос по импортированным файлам", welcome: "JARVIS ищет в выбранном корпусе через FTS5, многоязычный FAISS и BGE reranking, затем показывает точные ссылки на источники.",
     summarize: "Кратко изложить выбранные файлы", searchDocuments: "Поиск по документам", you: "Вы", grounded: "Ответ по источникам", insufficient: "Недостаточно контекста", retrieving: "Поиск", searching: "Поиск по выбранному корпусу", checkingChanges: "Проверка проекта и Google Sheets…", noChanges: "Изменений нет", updatedFiles: "Отправлено / обновлено файлов: {count}", reindexedFiles: "Переиндексировано файлов по политике chunks: {count}", removedFiles: "Архивировано / удалено файлов: {count}", rejectedFiles: "Не удалось проиндексировать файлов: {count}", placeholder: "Задайте вопрос по импортированным файлам…", upload: "Загрузить файлы", untrusted: "Импортированные файлы — недоверенный контекст. Ответы содержат источники.",
     corpus: "КОРПУС", drop: "Перетащите сюда документы, код или архив проекта", preview: "Предпросмотр", useProject: "Использовать весь проект", graph: "Граф зависимостей", selectFile: "Выберите импортированный файл, чтобы увидеть извлечённый текст.",
     settingsTitle: "Настройки JARVIS", settingsSubtitle: "Локальные настройки хранятся только на этом ПК.", language: "Язык интерфейса", provider: "Режим ответа", localModel: "Локальная модель Ollama", googleJson: "Путь к JSON service account Google", googleOwner: "Google e-mail для доступа к таблице", googleConnect: "Создать / подключить JARVIS DB", googleConnected: "Google Sheets подключены", available: "доступна", notConfigured: "недоступна", saved: "Сохранено локально. Доступность локальной модели обновлена.", desktopOnly: "JARVIS работает только на этом ПК. Импортированные файлы и ответы остаются локально.", close: "Закрыть", save: "Сохранить локально", saving: "Сохранение…", page: "стр.", generalTab: "Общие", databaseTab: "База данных", chunkingTab: "Нарезка chunks для разработчиков", archivesTab: "Архивированные чаты", archivedEmpty: "Архивированных чатов нет.", archiveConversation: "Архивировать чат", restoreConversation: "Восстановить", globalMode: "Глобальный режим", defaultMode: "По умолчанию", classicMode: "Classic — очищенный текст", developerMode: "Developer — исходная структура", mixedMode: "Mixed — выбор по вопросу", chunkingHint: "После сохранения каждый проект будет переиндексирован при следующем вопросе.",
   },
 } as const;
+
+function sessionBelongsToProject(session: Session, project: Project): boolean {
+  return (project.alias_ids?.length ? project.alias_ids : [project.id]).includes(session.project_id || "");
+}
 
 export function App() {
   const [language, setLanguage] = useState<UiLanguage>(() => (localStorage.getItem("jarvis-ui-language") === "ru" ? "ru" : "en"));
@@ -51,10 +55,20 @@ export function App() {
   const [settingsStatus, setSettingsStatus] = useState<LocalSettingsStatus>();
   const [settingsDraft, setSettingsDraft] = useState<LocalSettingsDraft>({});
   const [settingsNotice, setSettingsNotice] = useState("");
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("jarvis-expanded-projects") || "[]") as string[]); }
+    catch { return new Set(); }
+  });
+  const [sessionMenu, setSessionMenu] = useState<string>();
   const uploadRef = useRef<HTMLInputElement>(null);
   const text = UI[language];
 
   useEffect(() => { localStorage.setItem("jarvis-ui-language", language); }, [language]);
+  useEffect(() => { localStorage.setItem("jarvis-expanded-projects", JSON.stringify([...expandedProjects])); }, [expandedProjects]);
+  useEffect(() => {
+    if (!activeProject) return;
+    setExpandedProjects((current) => current.has(activeProject) ? current : new Set(current).add(activeProject));
+  }, [activeProject]);
   useEffect(() => { if (!selectedFile) setFileContent(text.selectFile); }, [selectedFile, text.selectFile]);
 
   const refresh = useCallback(async () => {
@@ -109,8 +123,10 @@ export function App() {
       if (!selected || Array.isArray(selected)) return;
       const name = selected.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "Imported project";
       const project = await api.createProject(name, selected);
-      setProjects((items) => [project, ...items.filter((item) => item.id !== project.id)]); setActiveProject(project.id);
-      await api.importProject(project.id); setFiles(await api.files(project.id)); setRepositoryGraph(await api.graph(project.id));
+      setActiveProject(project.id);
+      await api.importProject(project.id);
+      const [nextProjects, nextFiles, nextGraph] = await Promise.all([api.projects(), api.files(project.id), api.graph(project.id)]);
+      setProjects(nextProjects); setFiles(nextFiles); setRepositoryGraph(nextGraph);
     } catch (event) { setError(String(event)); }
   }
   async function openSettings() { setSettingsOpen(true); setSettingsNotice(""); try { const [nextStatus, nextArchived] = await Promise.all([api.settings(), api.sessions(true)]); setSettingsStatus(nextStatus); setArchivedSessions(nextArchived); } catch (event) { setError(String(event)); } }
@@ -128,6 +144,24 @@ export function App() {
       setArchivedSessions((items) => items.filter((item) => item.id !== sessionId));
       setSessions((items) => [restored, ...items.filter((item) => item.id !== sessionId)]);
     } catch (event) { setError(String(event)); }
+  }
+  async function renameConversation(session: Session) {
+    setSessionMenu(undefined);
+    const requested = window.prompt(text.renamePrompt, session.title);
+    if (requested === null) return;
+    try {
+      const renamed = await api.renameSession(session.id, requested);
+      setSessions((items) => items.map((item) => item.id === renamed.id ? renamed : item));
+      setArchivedSessions((items) => items.map((item) => item.id === renamed.id ? renamed : item));
+    } catch (event) { setError(String(event)); }
+  }
+  function toggleProject(projectId: string) {
+    setActiveProject(projectId);
+    setExpandedProjects((current) => {
+      const next = new Set(current);
+      if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
+      return next;
+    });
   }
   async function saveSettings() {
     setBusy(true); setSettingsNotice("");
@@ -171,12 +205,15 @@ export function App() {
     return { nodes, edges };
   }, [repositoryGraph]);
 
+  if (settingsOpen) {
+    return <SettingsPage language={language} onLanguage={setLanguage} policy={policy} projects={projects} status={settingsStatus} draft={settingsDraft} notice={settingsNotice} busy={busy} archivedSessions={archivedSessions} onPolicy={changePolicy} onDraft={setSettingsDraft} onSave={saveSettings} onConnectGoogle={connectGoogleSheets} onRestore={restoreConversation} onClose={() => setSettingsOpen(false)}/>;
+  }
+
   return <main className="app" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void handleFiles(event.dataTransfer.files); }}>
     <aside className="sidebar">
       <div className="brand"><div className="mark"><Sparkles size={16}/></div><div><strong>JARVIS</strong><span>DESKTOP RAG</span></div></div>
       <button className="primary" onClick={() => void createConversation()}><Plus size={16}/> {text.newConversation}</button>
-      <Section title={text.projects} action={<button className="section-action" onClick={() => void addProject()} title={text.importFolder}><FolderGit2 size={14}/><Plus size={10}/></button>}>{projects.map((project) => <button key={project.id} className={activeProject === project.id ? "nav active" : "nav"} onClick={() => setActiveProject(project.id)}><ChevronRight size={13}/><span>{project.name}</span></button>)}{!projects.length && <p className="empty">{text.noProjects}</p>}</Section>
-      <Section title={text.conversations}>{sessions.map((session) => <div className={activeSession === session.id ? "nav-row active" : "nav-row"} key={session.id}><button className="nav" onClick={() => setActiveSession(session.id)}><CircleDot size={12}/><span>{session.title}</span></button><button className="archive-button" title={text.archiveConversation} onClick={() => void archiveConversation(session.id)}><Archive size={13}/></button></div>)}</Section>
+      <Section title={text.projects} action={<button className="section-action" onClick={() => void addProject()} title={text.importFolder}><FolderGit2 size={14}/><Plus size={10}/></button>}>{projects.map((project) => { const expanded = expandedProjects.has(project.id); const projectSessions = sessions.filter((session) => sessionBelongsToProject(session, project)); return <div className="project-group" key={project.id}><button className={activeProject === project.id ? "project-nav active" : "project-nav"} onClick={() => toggleProject(project.id)}>{expanded ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<Folder size={13}/><span>{project.name}</span></button>{expanded && <div className="project-chats">{projectSessions.map((session) => <div className={activeSession === session.id ? "chat-row active" : "chat-row"} key={session.id}><button className="chat-nav" onClick={() => { setActiveProject(project.id); setActiveSession(session.id); setSessionMenu(undefined); }}><CircleDot size={10}/><span>{session.title}</span></button><button className="more-button" aria-label={`${session.title} menu`} onClick={() => setSessionMenu((current) => current === session.id ? undefined : session.id)}><MoreHorizontal size={13}/></button>{sessionMenu === session.id && <div className="session-menu"><button onClick={() => void renameConversation(session)}><Pencil size={13}/>{text.renameConversation}</button><button onClick={() => { setSessionMenu(undefined); void archiveConversation(session.id); }}><Archive size={13}/>{text.archiveConversation}</button></div>}</div>)}{!projectSessions.length && <p className="project-empty">{text.projectHasNoChats}</p>}</div>}</div>; })}{!projects.length && <p className="empty">{text.noProjects}</p>}</Section>
       <button className="settings" onClick={() => void openSettings()}><Settings size={16}/> {text.settings}</button>
     </aside>
     <section className="workspace">
@@ -192,15 +229,16 @@ export function App() {
       </div>
       <section className="bottom-panel"><div className="bottom-tabs"><button className="active"><Network size={14}/> {text.graph}</button><button className="collapse"><PanelBottom size={14}/></button></div><div className="graph"><ReactFlow nodes={graph.nodes} edges={graph.edges} fitView><Background color="#292e3a"/><Controls/></ReactFlow></div></section>
     </section>
-    {settingsOpen && <SettingsModal language={language} policy={policy} status={settingsStatus} draft={settingsDraft} notice={settingsNotice} busy={busy} archivedSessions={archivedSessions} onPolicy={changePolicy} onDraft={setSettingsDraft} onSave={saveSettings} onConnectGoogle={connectGoogleSheets} onRestore={restoreConversation} onClose={() => setSettingsOpen(false)}/>}
   </main>;
 }
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) { return <section className="side-section"><div className="section-label"><span>{title}</span>{action}</div><div className="section-items">{children}</div></section>; }
 function Citations({ items, language }: { items: Citation[]; language: UiLanguage }) { if (!items.length) return null; return <div className="citations">{items.map((item) => <button key={item.chunk_id}><File size={12}/><span>{item.source_path}{item.page ? ` · ${UI[language].page} ${item.page}` : ""}{item.line_start ? ` · L${item.line_start}${item.line_end ? `–${item.line_end}` : ""}` : ""}{item.sheet ? ` · ${item.sheet} ${item.cell_range || ""}` : ""}</span></button>)}</div>; }
 
-function SettingsModal({ language, policy, status, draft, notice, busy, archivedSessions, onPolicy, onDraft, onSave, onConnectGoogle, onRestore, onClose }: { language: UiLanguage; policy: Policy; status?: LocalSettingsStatus; draft: LocalSettingsDraft; notice: string; busy: boolean; archivedSessions: Session[]; onPolicy: (next: Partial<Policy>) => Promise<void>; onDraft: (next: LocalSettingsDraft) => void; onSave: () => Promise<void>; onConnectGoogle: () => Promise<void>; onRestore: (sessionId: string) => Promise<void>; onClose: () => void }) {
-  const [tab, setTab] = useState<"general" | "database" | "chunking" | "archives">("general");
+function SettingsPage({ language, onLanguage, policy, projects, status, draft, notice, busy, archivedSessions, onPolicy, onDraft, onSave, onConnectGoogle, onRestore, onClose }: { language: UiLanguage; onLanguage: (language: UiLanguage) => void; policy: Policy; projects: Project[]; status?: LocalSettingsStatus; draft: LocalSettingsDraft; notice: string; busy: boolean; archivedSessions: Session[]; onPolicy: (next: Partial<Policy>) => Promise<void>; onDraft: (next: LocalSettingsDraft) => void; onSave: () => Promise<void>; onConnectGoogle: () => Promise<void>; onRestore: (sessionId: string) => Promise<void>; onClose: () => void }) {
+  type SettingsTab = "general" | "model" | "database" | "chunking" | "archives";
+  const [tab, setTab] = useState<SettingsTab>("general");
+  const [search, setSearch] = useState("");
   const update = (name: keyof LocalSettingsDraft, value: string) => onDraft({ ...draft, [name]: value });
   const text = UI[language];
   const categories: Array<[ChunkingCategory, string]> = [
@@ -209,14 +247,38 @@ function SettingsModal({ language, policy, status, draft, notice, busy, archived
   ];
   const modeOptions = (includeDefault: boolean) => <>{includeDefault && <option value="default">{text.defaultMode}</option>}<option value="classic">{text.classicMode}</option><option value="developer">{text.developerMode}</option><option value="mixed">{text.mixedMode}</option></>;
   const categoryValue = (category: ChunkingCategory) => draft[`chunking_${category}`] ?? status?.chunking?.[category] ?? "default";
-  return <div className="modal-backdrop" onClick={onClose}><section className="modal settings-modal" onClick={(event) => event.stopPropagation()}>
-    <header><div><h2>{text.settingsTitle}</h2><small>{text.settingsSubtitle}</small></div><button onClick={onClose}><X/></button></header>
-    <div className="settings-layout"><nav className="settings-tabs"><button className={tab === "general" ? "active" : ""} onClick={() => setTab("general")}><Settings size={14}/>{text.generalTab}</button><button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}><Database size={14}/>{text.databaseTab}</button><button className={tab === "chunking" ? "active" : ""} onClick={() => setTab("chunking")}><SlidersHorizontal size={14}/>{text.chunkingTab}</button><button className={tab === "archives" ? "active" : ""} onClick={() => setTab("archives")}><Archive size={14}/>{text.archivesTab}</button></nav><div className="settings-content">
-      {tab === "general" && <><div className="provider-status">{Object.entries(status?.providers || {}).map(([name, value]) => <span key={name} className={value.available ? "available" : "unavailable"}><i/>{name}: {value.available ? text.available : text.notConfigured}</span>)}</div><div className="settings-grid"><label>{text.provider}<select value={policy.provider_profile} onChange={(event) => void onPolicy({ provider_profile: event.target.value as Policy["provider_profile"] })}><option value="local">{text.providerLocal}</option><option value="extractive">{text.evidenceOnly}</option></select></label><label>{text.localModel}<input value={draft.ollama_model ?? status?.models.local ?? "qwen3:14b"} onChange={(event) => update("ollama_model", event.target.value)}/></label></div></>}
-      {tab === "database" && <><div className="settings-grid"><label>{text.googleJson}<input value={draft.google_service_account_path ?? ""} placeholder="C:\\private\\jarvis-service-account.json" onChange={(event) => update("google_service_account_path", event.target.value)}/></label><label>{text.googleOwner}<input value={draft.google_owner_email ?? ""} placeholder="name@gmail.com" onChange={(event) => update("google_owner_email", event.target.value)}/></label></div>{status?.google_sheets?.connected && <p className="settings-notice">{text.googleConnected}</p>}<button className="ghost settings-connect" disabled={busy} onClick={() => void onConnectGoogle()}>{text.googleConnect}</button></>}
-      {tab === "chunking" && <div className="settings-grid"><label>{text.globalMode}<select value={draft.chunking_global_mode ?? status?.chunking?.global_mode ?? "classic"} onChange={(event) => update("chunking_global_mode", event.target.value as ChunkingMode)}>{modeOptions(false)}</select></label>{categories.map(([category, label]) => <label key={category}>{label}<select value={categoryValue(category)} onChange={(event) => update(`chunking_${category}` as keyof LocalSettingsDraft, event.target.value as ChunkingCategoryMode)}>{modeOptions(true)}</select></label>)}<p className="settings-notice">{text.chunkingHint}</p></div>}
-      {tab === "archives" && <div className="archive-list">{archivedSessions.length ? archivedSessions.map((session) => <div className="archive-item" key={session.id}><div><strong>{session.title}</strong><small>{new Date(session.archived_at || session.updated_at).toLocaleString(language === "ru" ? "ru-RU" : "en-US")}</small></div><button className="ghost" onClick={() => void onRestore(session.id)}><ArchiveRestore size={14}/>{text.restoreConversation}</button></div>) : <p className="empty">{text.archivedEmpty}</p>}</div>}
-      {notice && <p className="settings-notice">{notice}</p>}<p>{text.desktopOnly}</p>
-    </div></div><footer><button className="ghost" onClick={onClose}>{text.close}</button>{tab !== "archives" && <button className="primary" disabled={busy} onClick={() => void onSave()}>{busy ? text.saving : text.save}</button>}</footer>
-  </section></div>;
+  const navItems: Array<{ id: SettingsTab; label: string; icon: React.ReactNode }> = [
+    { id: "general", label: text.generalTab, icon: <Settings size={14}/> },
+    { id: "model", label: text.modelRagTab, icon: <Bot size={14}/> },
+    { id: "database", label: text.databaseTab, icon: <Database size={14}/> },
+    { id: "chunking", label: text.chunkingTab, icon: <SlidersHorizontal size={14}/> },
+    { id: "archives", label: text.archivesTab, icon: <Archive size={14}/> },
+  ];
+  const visibleNav = navItems.filter((item) => item.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const activeLabel = navItems.find((item) => item.id === tab)?.label || text.settingsTitle;
+  const archiveGroups = projects.map((project) => ({ project, sessions: archivedSessions.filter((session) => sessionBelongsToProject(session, project)) })).filter((group) => group.sessions.length);
+  const knownArchiveIds = new Set(archiveGroups.flatMap((group) => group.sessions.map((session) => session.id)));
+  const orphanArchives = archivedSessions.filter((session) => !knownArchiveIds.has(session.id));
+  return <main className="settings-page">
+    <aside className="settings-sidebar">
+      <button className="settings-back" onClick={onClose}><ArrowLeft size={14}/>{text.backToApp}</button>
+      <div className="settings-search"><Search size={14}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={text.searchSettings}/></div>
+      <small>JARVIS</small>
+      <nav>{visibleNav.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}>{item.icon}{item.label}</button>)}</nav>
+      {!visibleNav.length && <p className="settings-empty">{text.settingsNoResults}</p>}
+    </aside>
+    <section className="settings-main"><div className="settings-main-inner"><header><h1>{activeLabel}</h1><p>{text.settingsSubtitle}</p></header>
+      {tab === "general" && <div className="settings-card"><label>{text.language}<select value={language} onChange={(event) => onLanguage(event.target.value as UiLanguage)}><option value="en">English</option><option value="ru">Русский</option></select></label><p>{text.desktopOnly}</p></div>}
+      {tab === "model" && <div className="settings-card"><div className="provider-status">{Object.entries(status?.providers || {}).map(([name, value]) => <span key={name} className={value.available ? "available" : "unavailable"}><i/>{name}: {value.available ? text.available : text.notConfigured}</span>)}</div><div className="settings-grid"><label>{text.provider}<select value={policy.provider_profile} onChange={(event) => void onPolicy({ provider_profile: event.target.value as Policy["provider_profile"] })}><option value="local">{text.providerLocal}</option><option value="extractive">{text.evidenceOnly}</option></select></label><label>{text.localModel}<input value={draft.ollama_model ?? status?.models.local ?? "qwen3:14b"} onChange={(event) => update("ollama_model", event.target.value)}/></label></div></div>}
+      {tab === "database" && <div className="settings-card"><div className="settings-grid"><label>{text.googleJson}<input value={draft.google_service_account_path ?? ""} placeholder="C:\\private\\jarvis-service-account.json" onChange={(event) => update("google_service_account_path", event.target.value)}/></label><label>{text.googleOwner}<input value={draft.google_owner_email ?? ""} placeholder="name@gmail.com" onChange={(event) => update("google_owner_email", event.target.value)}/></label></div>{status?.google_sheets?.connected && <p className="settings-notice">{text.googleConnected}</p>}<button className="ghost settings-connect" disabled={busy} onClick={() => void onConnectGoogle()}>{text.googleConnect}</button></div>}
+      {tab === "chunking" && <div className="settings-card"><div className="settings-grid"><label>{text.globalMode}<select value={draft.chunking_global_mode ?? status?.chunking?.global_mode ?? "classic"} onChange={(event) => update("chunking_global_mode", event.target.value as ChunkingMode)}>{modeOptions(false)}</select></label>{categories.map(([category, label]) => <label key={category}>{label}<select value={categoryValue(category)} onChange={(event) => update(`chunking_${category}` as keyof LocalSettingsDraft, event.target.value as ChunkingCategoryMode)}>{modeOptions(true)}</select></label>)}</div><p className="settings-notice">{text.chunkingHint}</p></div>}
+      {tab === "archives" && <div className="archive-groups">{archiveGroups.map(({ project, sessions }) => <section key={project.id}><h2><Folder size={14}/>{project.name}</h2><div className="archive-list">{sessions.map((session) => <ArchiveRow key={session.id} session={session} language={language} label={text.restoreConversation} onRestore={onRestore}/>)}</div></section>)}{orphanArchives.length > 0 && <section><h2>{text.noProject}</h2><div className="archive-list">{orphanArchives.map((session) => <ArchiveRow key={session.id} session={session} language={language} label={text.restoreConversation} onRestore={onRestore}/>)}</div></section>}{!archivedSessions.length && <p className="empty">{text.archivedEmpty}</p>}</div>}
+      {notice && <p className="settings-notice">{notice}</p>}
+      {tab !== "general" && tab !== "archives" && <div className="settings-actions"><button className="primary" disabled={busy} onClick={() => void onSave()}>{busy ? text.saving : text.save}</button></div>}
+    </div></section>
+  </main>;
+}
+
+function ArchiveRow({ session, language, label, onRestore }: { session: Session; language: UiLanguage; label: string; onRestore: (sessionId: string) => Promise<void> }) {
+  return <div className="archive-item"><div><strong>{session.title}</strong><small>{new Date(session.archived_at || session.updated_at).toLocaleString(language === "ru" ? "ru-RU" : "en-US")}</small></div><button className="ghost" onClick={() => void onRestore(session.id)}><ArchiveRestore size={14}/>{label}</button></div>;
 }

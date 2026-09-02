@@ -49,6 +49,7 @@ class JarvisApi {
   }
   archiveSession(sessionId: string) { return this.request<Session>(`/v1/sessions/${sessionId}/archive`, { method: "POST" }); }
   restoreSession(sessionId: string) { return this.request<Session>(`/v1/sessions/${sessionId}/restore`, { method: "POST" }); }
+  renameSession(sessionId: string, title: string) { return this.request<Session>(`/v1/sessions/${sessionId}`, { method: "PATCH", body: JSON.stringify({ title }) }); }
   messages(sessionId: string) { return this.request<Message[]>(`/v1/sessions/${sessionId}/messages`); }
   send(sessionId: string, content: string) {
     return this.request<RagAnswer>(`/v1/messages?session_id=${encodeURIComponent(sessionId)}`, { method: "POST", body: JSON.stringify({ content }) });

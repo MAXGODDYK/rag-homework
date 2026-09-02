@@ -2,6 +2,8 @@ export type Project = {
   id: string;
   name: string;
   root_path?: string | null;
+  alias_ids?: string[];
+  created?: boolean;
 };
 
 export type Session = {

@@ -90,6 +90,12 @@ class SessionCreate(BaseModel):
     title: str = Field(default="New conversation", max_length=200)
 
 
+class SessionRename(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=200)
+
+
 class MessageCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
