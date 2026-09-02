@@ -95,12 +95,14 @@ Evidence gate перевіряє, чи достатньо релевантний
 
 У desktop-інтерфейсі проєкти відображаються як папки, а чати вкладені під
 ними. Повторний імпорт того самого абсолютного шляху не створює дубль.
-Conversations можна перейменувати, архівувати та відновити. Праворуч є corpus
-tree і preview, внизу — dependency graph.
+Conversations можна перейменувати, архівувати та відновити. Corpus selector
+залишився у верхній панелі, а основна область повністю віддана чату. Окремі
+панелі preview та dependency graph я прибрав, щоб вони не зменшували робочу
+область і не відволікали від grounded-відповіді та citations.
 
 ### Слайд 9 — Перевірені результати
 
-Я не обмежився скриншотом. Python suite має 41 passed test. Frontend і Tauri
+Я не обмежився скриншотом. Python suite має 44 passed tests. Frontend і Tauri
 release зібрані. Live sync проєкту «Сашен сайт» дав 975 current chunks,
 стільки ж vector/document mappings і нуль локальних SQLite text chunks.
 Тобто демонстраційні цифри відповідають поточній базі.
@@ -121,7 +123,7 @@ set, OCR/media ще не готові, а code editing навмисно вимк
 4. Обираю corpus `поточний проєкт` або конкретний файл.
 5. Ставлю code-запит: «Які модулі відповідають за запуск застосунку? Вкажи
    файли та рядки».
-6. Показую grounded label, citations, file preview і dependency graph.
+6. Показую grounded label і точні citations без зайвих бічних панелей.
 7. Обираю один конкретний файл і ставлю питання лише до нього — це демонструє
    early scope filtering.
 8. Ставлю out-of-scope питання. Очікуваний результат — honest fallback без

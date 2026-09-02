@@ -17,20 +17,43 @@ class JarvisApi {
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const info = await this.connect();
-    const response = await fetch(`http://${info.host}:${info.port}${path}`, {
-      ...init,
-      headers: {
-        "X-Jarvis-Token": info.ipc_token,
-        ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-        ...init.headers,
-      },
-    });
-    if (!response.ok) {
-      const detail = await response.json().catch(() => ({ detail: response.statusText }));
-      throw new Error(detail.detail || `HTTP ${response.status}`);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const info = await this.connect();
+      if (attempt > 0) {
+        // The Python bootstrap contract is printed just before Uvicorn starts
+        // accepting connections. Give the recovered process a brief grace period.
+        await new Promise((resolve) => window.setTimeout(resolve, attempt * 250));
+      }
+      let response: Response;
+      try {
+        response = await fetch(`http://${info.host}:${info.port}${path}`, {
+          ...init,
+          headers: {
+            "X-Jarvis-Token": info.ipc_token,
+            ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            ...init.headers,
+          },
+        });
+      } catch (error) {
+        if (attempt < 2) {
+          // The Python process may have restarted. Drop the stale port/token
+          // and let Tauri's ensure_backend command recover it once.
+          this.info = undefined;
+          continue;
+        }
+        throw new Error(`JARVIS backend connection was lost: ${String(error)}`);
+      }
+      if (response.status === 401 && attempt < 2) {
+        this.info = undefined;
+        continue;
+      }
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(detail.detail || `HTTP ${response.status}`);
+      }
+      return response.json() as Promise<T>;
     }
-    return response.json() as Promise<T>;
+    throw new Error("JARVIS backend connection could not be restored");
   }
 
   health() { return this.request<{ status: string; version: string; mode: string }>("/v1/health"); }
@@ -58,8 +81,6 @@ class JarvisApi {
     return this.request(`/v1/sessions/${sessionId}/policy`, { method: "POST", body: JSON.stringify(policy) });
   }
   files(projectId: string) { return this.request<DocumentFile[]>(`/v1/projects/${projectId}/files`); }
-  graph(projectId: string) { return this.request<{ nodes: Array<{ id: string; relative_path: string }>; edges: Array<{ id: string; source_document_id: string; target_ref: string; edge_type: string }> }>(`/v1/projects/${projectId}/graph`); }
-  fileContent(documentId: string) { return this.request<{ content: string }>(`/v1/files/${documentId}/content`); }
   async upload(projectId: string, file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -67,12 +88,28 @@ class JarvisApi {
   }
   importProject(projectId: string) { return this.request(`/v1/projects/${projectId}/import`, { method: "POST" }); }
   async events(onEvent: (event: { type: string; session_id?: string; payload: Record<string, unknown> }) => void) {
-    const info = await this.connect();
-    const socket = new WebSocket(`ws://${info.host}:${info.port}/v1/events?token=${encodeURIComponent(info.ipc_token)}`);
-    socket.addEventListener("message", (message) => {
-      try { onEvent(JSON.parse(message.data as string)); } catch { /* ignore malformed local events */ }
-    });
-    return () => socket.close();
+    let stopped = false;
+    let socket: WebSocket | undefined;
+    let reconnectTimer: number | undefined;
+    const openSocket = async () => {
+      if (stopped) return;
+      const info = await this.connect();
+      socket = new WebSocket(`ws://${info.host}:${info.port}/v1/events?token=${encodeURIComponent(info.ipc_token)}`);
+      socket.addEventListener("message", (message) => {
+        try { onEvent(JSON.parse(message.data as string)); } catch { /* ignore malformed local events */ }
+      });
+      socket.addEventListener("close", () => {
+        if (stopped) return;
+        this.info = undefined;
+        reconnectTimer = window.setTimeout(() => void openSocket().catch(() => undefined), 500);
+      });
+    };
+    await openSocket();
+    return () => {
+      stopped = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      socket?.close();
+    };
   }
 }
 

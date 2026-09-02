@@ -4,6 +4,10 @@
 
 - Tauri 2 / React desktop із російською та англійською локалізацією;
 - проєкти як розкривні папки з вкладеними чатами;
+- сфокусована одноколонкова chat-area без file-preview і dependency-graph
+  панелей;
+- race-safe перемикання чатів і автоматичне відновлення локального backend
+  після його перезапуску;
 - нормалізація абсолютних шляхів і візуальне об'єднання legacy-дублів;
 - rename, archive та restore conversations без втрати messages/citations;
 - повноекранні Settings із розділами General, Model/RAG, Database,
@@ -34,7 +38,7 @@
 
 ## Перевірений стан
 
-- Python suite: `41 passed`;
+- Python suite: `44 passed`;
 - production frontend build: успішний;
 - Tauri release EXE, MSI та NSIS setup: успішно зібрані;
 - live Google Sheets snapshot для проєкту «Сашен сайт»:
