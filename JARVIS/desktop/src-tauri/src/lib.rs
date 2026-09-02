@@ -35,6 +35,9 @@ impl Drop for BackendProcess {
 struct BackendState(Mutex<Option<BackendProcess>>);
 
 fn development_python() -> PathBuf {
+    if let Some(explicit) = env::var_os("JARVIS_PYTHON") {
+        return PathBuf::from(explicit);
+    }
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("..")
@@ -91,7 +94,7 @@ fn spawn_backend(app: &tauri::AppHandle) -> Result<BackendProcess, String> {
     let executable = bundled.clone().unwrap_or_else(development_python);
     if !executable.is_file() {
         return Err(format!(
-            "Backend executable was not found at {}. Set JARVIS_SIDECAR_PATH or create JARVIS/.venv.",
+            "Backend executable was not found at {}. Set JARVIS_PYTHON, JARVIS_SIDECAR_PATH, or create JARVIS/.venv.",
             executable.display()
         ));
     }

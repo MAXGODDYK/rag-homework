@@ -11,9 +11,10 @@ JARVIS — мій локальний desktop-застосунок для роб�
 - імпортує папки проєктів та завантажені файли: PDF, DOCX, PPTX, XLSX,
   OpenDocument, EPUB, HTML, Markdown, CSV/JSON/YAML та код;
 - безпечно розпаковує ZIP, TAR/TGZ, 7z і RAR без виконання їхнього вмісту;
-- індексує текст у SQLite FTS5 та multilingual FAISS, зберігає page/cell/line
-  metadata, symbols та dependency graph для коду;
-- виконує hybrid retrieval і BGE reranking;
+- синхронізує current/history chunks з Google Sheets, а локально тримає
+  text-free multilingual FAISS cache та карти IDs;
+- виконує scope-aware semantic retrieval, candidate BM25, graph expansion і
+  BGE reranking;
 - дозволяє обрати current project, all projects або конкретний файл до запиту;
 - повертає відповідь із citations через локальну Qwen3. Режим `Evidence only`
   за потреби показує релевантні уривки й citations без генерації відповіді.
@@ -21,12 +22,11 @@ JARVIS — мій локальний desktop-застосунок для роб�
 ## RAG pipeline
 
 ```text
-selected corpus/file
-→ early metadata filter
-→ SQLite FTS5 + multilingual FAISS + code-symbol expansion
-→ reciprocal-rank fusion
-→ BGE reranking
-→ evidence gate
+project sync + chunking policy
+→ Google Sheets Current / History + text-free FAISS cache
+→ early project/file + representation filter
+→ FAISS IDs → Sheets batch fetch → candidate BM25 + code graph
+→ BGE reranking + evidence gate
 → grounded JSON answer / extractive evidence / honest fallback
 → page, cell або line citations
 ```
@@ -34,21 +34,21 @@ selected corpus/file
 Перед кожним питанням JARVIS перевіряє весь активний проєкт. Він спершу
 порівнює розмір і час зміни файла, а SHA-256 рахує лише для можливих змін.
 Тому незмінені файли не ріжуться повторно і FAISS не перебудовується без
-потреби. Поточні артефакти зберігаються локально у читабельному вигляді:
+потреби. Після підключення Google Sheets повний текст не зберігається у
+локальних artifacts:
 
 ```text
 local_state/projects/<project-name>--<short-id>/
-├── chunks.jsonl        # лише актуальні chunks, що беруть участь у пошуку
-├── manifest.json       # SHA-256, mtime, розмір, статус і chunk IDs файлів
-├── index/              # embeddings.npy, faiss.index, manifest.json
-├── text/               # витягнутий текст актуальних версій
-└── history/            # попередні/видалені/rejected версії, поза retrieval
+└── index/
+    ├── embeddings.npy  # відновлювані вектори без вихідного тексту
+    ├── faiss.index
+    └── manifest.json   # chunk → row/document/representation maps
 ```
 
-Змінений або видалений файл спочатку архівується в `history/`, після чого його
-старі chunks видаляються з FTS5, FAISS і поточного `chunks.jsonl`. Якщо нова
-версія не парситься, вона має статус `rejected`, а застарілий текст не може
-бути процитований. Перед відповіддю інтерфейс показує результат: перевірка,
+Змінений або видалений файл спочатку переноситься з `Chunks_Current` у
+`Chunks_History`, після чого FAISS і maps оновлюються. Якщо нова версія не
+парситься, вона має статус `rejected`, а застарілий текст не може бути
+процитований. Перед відповіддю інтерфейс показує результат: перевірка,
 відсутність змін, кількість оновлених/видалених або відхилених файлів.
 
 ## Режими нарізки chunks
@@ -112,14 +112,22 @@ set. Через це chunk із потрібного файлу міг не по
 reranking. Отже selector реально обмежує search space і всі citations
 належать вибраному corpus.
 
-Детальний before/after, changelog і обмеження: [FINAL_IMPROVEMENT.md](FINAL_IMPROVEMENT.md).
+Матеріали для перевірки та захисту:
+
+- [FINAL_IMPROVEMENT.md](FINAL_IMPROVEMENT.md) — before/after, changelog і
+  remaining limitations;
+- [docs/WORKFLOW_GRAPH.md](docs/WORKFLOW_GRAPH.md) — велике workflow-дерево;
+- [DEFENSE_SCRIPT_UK.md](DEFENSE_SCRIPT_UK.md) — готовий текст виступу та
+  live-demo;
+- [outputs/presentation/JARVIS_FINAL_DEFENSE_UK.pptx](outputs/presentation/JARVIS_FINAL_DEFENSE_UK.pptx)
+  — презентація на 10 слайдів.
 
 ## Запуск desktop-версії
 
 Команди виконуються з папки `JARVIS`.
 
 ```powershell
-py -3.14 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 
@@ -131,8 +139,11 @@ npm install
 npm run tauri dev
 ```
 
-Tauri запускає Python backend локально. Desktop-ярлик для цього проєкту
-використовує `JARVIS/.venv`, тому працюють повний FAISS semantic search і BGE
+Для Windows рекомендовано Python 3.12. Python 3.14 поки не використовується для
+desktop backend через нестабільність native FAISS/Torch-пакетів у цьому
+оточенні. Tauri запускає Python backend локально. Desktop-ярлик для цього
+проєкту використовує перевірене локальне середовище Python 3.12 (із fallback
+на `JARVIS/.venv`), тому працюють повний FAISS semantic search і BGE
 reranking, а не лише lexical mode. Backend слухає тільки `127.0.0.1`,
 використовує одноразовий IPC token і не відкриває мережевий server назовні.
 Щоб зупинити застосунок, достатньо закрити desktop-вікно або натиснути
@@ -190,5 +201,6 @@ citations, evidence gate, extractive fallback і ранню metadata-фільт�
   corpus.
 - OCR, зображення, аудіо та відео не індексуються в цій версії.
 - Індексація великої папки зараз виконується синхронно.
-- Повний FAISS і BGE pipeline потребує локального Python runtime у
-  `JARVIS/.venv`; компактний installer без нього працює лише в lexical mode.
+- Повний FAISS і BGE pipeline потребує локального Python 3.12 runtime;
+  поточний installer на цьому ПК використовує підготовлене Python 3.12
+  середовище; повністю self-contained Python sidecar ще не зібраний.

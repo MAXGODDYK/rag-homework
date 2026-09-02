@@ -436,7 +436,12 @@ class IngestionService:
             self.rebuild_vector_index(user_id, project_id)
         if self.cloud_chunks_enabled:
             self._flush_cloud_chunks(user_id, project_id)
-            if summary.changed or not (root / "index" / "faiss.index").exists():
+            vector = VectorIndex(root / "index", self.embedding_model)
+            if (
+                summary.changed
+                or not (root / "index" / "faiss.index").exists()
+                or len(vector.document_ids()) != vector.count()
+            ):
                 self.rebuild_vector_index(user_id, project_id)
         else:
             self._export_current_artifacts(user_id, project_id)
@@ -556,15 +561,18 @@ class IngestionService:
             index = VectorIndex(root, self.embedding_model)
             # Keep the basic rebuild signature stable: diagnostic/test
             # adapters may implement the original three-argument method.
-            index.rebuild([row["id"] for row in rows], [row["text"] for row in rows], remote_rows=row_map)
+            index.rebuild([row["id"] for row in rows], [row["text"] for row in rows])
+            index.set_remote_rows(row_map)
             index.set_representations({row["id"]: row.get("representation", "classic") for row in rows})
+            index.set_document_ids({row["id"]: row["document_id"] for row in rows})
             index.set_policy_fingerprint(policy_fingerprint)
             return
-        rows = self.database.query_all("SELECT c.id,c.text,c.representation FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.user_id=? AND c.project_id IS ? AND d.status='ready' ORDER BY c.document_id,c.ordinal", (user_id, project_id))
+        rows = self.database.query_all("SELECT c.id,c.document_id,c.text,c.representation FROM chunks c JOIN documents d ON d.id=c.document_id WHERE c.user_id=? AND c.project_id IS ? AND d.status='ready' ORDER BY c.document_id,c.ordinal", (user_id, project_id))
         root = self.project_state_root(user_id, project_id) / "index"
         index = VectorIndex(root, self.embedding_model)
         index.rebuild([row["id"] for row in rows], [row["text"] for row in rows])
         index.set_representations({row["id"]: row["representation"] for row in rows})
+        index.set_document_ids({row["id"]: row["document_id"] for row in rows})
         index.set_policy_fingerprint(policy_fingerprint)
 
     def delete_document(self, document_id: str, *, user_id: str) -> None:

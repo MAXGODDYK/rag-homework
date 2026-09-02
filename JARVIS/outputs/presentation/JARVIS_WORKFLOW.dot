@@ -1,0 +1,137 @@
+digraph JARVIS {
+  graph [
+    rankdir=TB,
+    bgcolor="#FFFFFF",
+    pad="0.35",
+    nodesep="0.28",
+    ranksep="0.44",
+    splines=ortho,
+    fontname="Arial",
+    fontsize=20,
+    labelloc="t",
+    label="JARVIS — повний desktop RAG workflow"
+  ];
+  node [shape=box, style="rounded,filled", fillcolor="#F4F6F8", color="#A8B0BA", fontname="Arial", fontsize=12, margin="0.14,0.08"];
+  edge [color="#75808D", fontname="Arial", fontsize=10, arrowsize=0.7];
+
+  user [label="Запит користувача\nу desktop UI", fillcolor="#DCEEFF", color="#3D8DFF", penwidth=2];
+  session [label="Сесія + активний проєкт\nprovider + corpus selector"];
+  validate [label="Validation\nнепорожній запит, ≤ 10 000 символів"];
+  user -> session -> validate;
+
+  subgraph cluster_sync {
+    label="1. Incremental project sync";
+    color="#B9D9F2";
+    style="rounded";
+    scan [label="Сканування дозволених файлів\n.gitignore + secret/binary guards"];
+    stat [label="Порівняння manifest\nsize + mtime"];
+    changed [shape=diamond, label="Файл\nзмінився?", fillcolor="#FFF3D6"];
+    hash [label="SHA-256 тільки для\nпотенційних змін"];
+    same [shape=diamond, label="SHA той\nсамий?", fillcolor="#FFF3D6"];
+    unchanged [label="No changes\nбез rechunk і rebuild", fillcolor="#E9F7EF"];
+    archive [label="Архівація попередньої\ncurrent-версії"];
+    parse [label="Parser за форматом\nPDF / Office / HTML / code / text"];
+    mode [shape=diamond, label="Політика\nнарізки", fillcolor="#FFF3D6"];
+    classic [label="Classic\nочищений semantic text"];
+    developer [label="Developer\nструктура, теги, рядки"];
+    mixed [label="Mixed\nобидва representation"];
+    chunk [label="Структурні chunks\npage / heading / cell / lines"];
+    sheets [label="Google Sheets DB\nFiles + Current + History", fillcolor="#E6F4EA", color="#34A853", penwidth=2];
+    cache [label="Text-free local cache\nFAISS + row map + document map"];
+    status [label="UI sync status\nupdated / removed / rejected"];
+
+    validate -> scan;
+    scan -> stat -> changed;
+    changed -> unchanged [label="ні"];
+    changed -> hash [label="так"];
+    hash -> same;
+    same -> unchanged [label="так"];
+    same -> archive [label="ні"];
+    archive -> parse -> mode;
+    mode -> classic;
+    mode -> developer;
+    mode -> mixed;
+    classic -> chunk;
+    developer -> chunk;
+    mixed -> chunk;
+    chunk -> sheets -> cache -> status;
+    unchanged -> status;
+  }
+
+  subgraph cluster_scope {
+    label="2. Scope and representation routing";
+    color="#D7C9F5";
+    style="rounded";
+    selector [label="Early metadata filter\nproject / all / exact file", fillcolor="#EEE8FF", color="#7C5CE5", penwidth=2];
+    eligible [label="Eligible document IDs\nдо candidate cutoff"];
+    router [shape=diamond, label="Запит про\nкод?", fillcolor="#FFF3D6"];
+    repdev [label="representation=developer"];
+    repclassic [label="representation=classic"];
+    status -> selector -> eligible -> router;
+    router -> repdev [label="так"];
+    router -> repclassic [label="ні"];
+  }
+
+  subgraph cluster_retrieval {
+    label="3. Hybrid retrieval";
+    color="#F0C7A2";
+    style="rounded";
+    storage [shape=diamond, label="Режим\nсховища", fillcolor="#FFF3D6"];
+    vectorcloud [label="FAISS semantic search\nповертає тільки chunk IDs"];
+    mapfilter [label="Filter через text-free maps\ndocument + representation"];
+    fetch [label="Sheets batchGet\nтільки candidate chunks"];
+    bm25cloud [label="BM25 у candidate set"];
+    fts [label="SQLite FTS5\nlexical candidates"];
+    vectorlocal [label="FAISS\nsemantic candidates"];
+    graphmeta [label="Symbols / import graph\ncode expansion"];
+    rrf [label="Reciprocal-rank fusion"];
+    bge [label="BGE reranking\nCPU"];
+    top [label="Grounded top-3 chunks"];
+    sheeterror [label="Safe sync error\nбез stale local text", fillcolor="#FDE8E7", color="#D93025"];
+
+    repdev -> storage;
+    repclassic -> storage;
+    storage -> vectorcloud [label="Google Sheets"];
+    vectorcloud -> mapfilter -> fetch -> bm25cloud -> bge;
+    storage -> fts [label="локальний режим"];
+    storage -> vectorlocal [label="локальний режим"];
+    storage -> graphmeta [label="локальний режим"];
+    fts -> rrf;
+    vectorlocal -> rrf;
+    graphmeta -> rrf;
+    rrf -> bge;
+    fetch -> sheeterror [style=dashed, label="API недоступний"];
+    bge -> top;
+  }
+
+  subgraph cluster_answer {
+    label="4. Grounded answering and safety";
+    color="#B9DFCC";
+    style="rounded";
+    gate [shape=diamond, label="Evidence gate\nscore достатній?", fillcolor="#FFF3D6"];
+    fallback [label="Чесний fallback\n«недостатньо контексту»", fillcolor="#FDE8E7", color="#D93025"];
+    provider [shape=diamond, label="Режим\nвідповіді", fillcolor="#FFF3D6"];
+    qwen [label="Local Qwen3 via Ollama\nтільки retrieved context", fillcolor="#E8F0FE", color="#3D8DFF"];
+    evidence [label="Evidence only\nextractive answer"];
+    contract [label="Строгий JSON contract\nanswer + citations + flag"];
+    repair [label="Одна repair-спроба"];
+    citecheck [label="Citation validation\nлише дозволені chunk IDs"];
+    answer [label="Streaming grounded answer\npage / line / cell citations", fillcolor="#DCEEFF", color="#3D8DFF", penwidth=2];
+    clear [label="Звільнення candidate text\nз RAM після відповіді"];
+    audit [label="SQLite: chats, messages,\nprojects, archive state"];
+
+    top -> gate;
+    gate -> fallback [label="ні"];
+    gate -> provider [label="так"];
+    provider -> qwen [label="Local Qwen3"];
+    provider -> evidence [label="Evidence only"];
+    qwen -> contract;
+    contract -> repair [style=dashed, label="invalid"];
+    repair -> citecheck;
+    contract -> citecheck [label="valid"];
+    evidence -> citecheck;
+    citecheck -> answer -> clear -> audit;
+    fallback -> audit;
+    sheeterror -> audit;
+  }
+}

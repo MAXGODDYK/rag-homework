@@ -1,27 +1,53 @@
-# Implementation status
+# Стан реалізації
 
-## Implemented
+## Реалізовано
 
-- Tauri/React local desktop interface with corpus selector, drag-and-drop
-  uploads, file preview, citations and code dependency graph;
-- FastAPI loopback sidecar with one-time IPC token and WebSocket chat events;
-- document/repository ingestion with SHA-256 incremental updates, archive
-  guards, page/cell/line citation metadata and code symbols;
-- scope-aware FTS5 + multilingual FAISS + graph RRF retrieval and BGE
+- Tauri 2 / React desktop із російською та англійською локалізацією;
+- проєкти як розкривні папки з вкладеними чатами;
+- нормалізація абсолютних шляхів і візуальне об'єднання legacy-дублів;
+- rename, archive та restore conversations без втрати messages/citations;
+- повноекранні Settings із розділами General, Model/RAG, Database,
+  Chunking та Archived chats;
+- FastAPI sidecar на випадковому loopback-порту з одноразовим IPC token;
+- Python 3.12 desktop runtime, production Tauri EXE, MSI та NSIS installer;
+- incremental SHA-256 sync перед кожним питанням;
+- Classic / Developer / Mixed chunking та representation fingerprint;
+- Google Sheets як source of truth для Files, current і history chunks;
+- text-free local FAISS cache з document/row/representation maps;
+- ранній corpus/file filter до candidate cutoff;
+- FAISS semantic retrieval, candidate BM25, code graph expansion та BGE
   reranking;
-- grounded JSON contract, evidence gate and extractive no-provider fallback;
-- explicit unit/API/ingestion tests for the RAG-only surface.
+- локальна Qwen3 через Ollama та безпечний режим Evidence only;
+- evidence gate, grounded JSON contract, repair і перевірені citations;
+- page, slide, sheet/cell та code line citations;
+- parser/archive/security tests і desktop/API regression tests.
 
-## Deliberately removed
+## Свідомо прибрано з фінального продукту
 
-- Telegram bot and all chat commands;
-- external finance, browser, email/calendar and system tools;
-- bounded agent loop, approvals, safe/autonomous modes and command execution;
-- local Qwen/QLoRA runtime from the desktop product.
+- Telegram bot і всі Telegram-команди;
+- зовнішні finance/browser/email/calendar/system integrations;
+- довільні agent tools, approvals, safe/autonomous modes та виконання команд;
+- автоматичне редагування або запуск коду користувача.
 
-## Current limits
+Фінальний фокус — контрольований desktop RAG над локально вибраними файлами,
+а не універсальний computer-use agent.
 
-- full FAISS/BGE retrieval requires the complete Python environment;
-- OCR, media parsing and asynchronous ingestion jobs are not implemented;
-- a remote model receives only retrieved context when the user enables a
-  local Ollama model; `Evidence only` avoids generation completely.
+## Перевірений стан
+
+- Python suite: `41 passed`;
+- production frontend build: успішний;
+- Tauri release EXE, MSI та NSIS setup: успішно зібрані;
+- live Google Sheets snapshot для проєкту «Сашен сайт»:
+  `975` current chunks, `975` vector/document mappings, `0` локальних
+  SQLite text chunks;
+- desktop запущений через актуальний ярлик без `Failed to fetch`.
+
+## Поточні обмеження
+
+- Google Sheets має API quotas та більшу latency, ніж спеціалізована vector DB;
+- threshold evidence gate відкалібрований на навчальному corpus і потребує
+  ширшого eval set;
+- OCR, зображення, аудіо й відео не мають production ingestion pipeline;
+- великі репозиторії синхронізуються перед питанням, а не окремим scheduler;
+- локальна Qwen3 залежить від доступності Ollama і ресурсів конкретного ПК;
+- JARVIS аналізує код і дає citations, але навмисно не змінює файли.

@@ -75,6 +75,7 @@ def test_vector_manifest_keeps_remote_row_map_without_chunk_text(tmp_path, monke
         ["secret chunk text"],
         remote_rows={"chunk_1": 42},
         representations={"chunk_1": "developer"},
+        document_ids={"chunk_1": "document_1"},
         policy_fingerprint="policy-test",
     )
 
@@ -82,8 +83,10 @@ def test_vector_manifest_keeps_remote_row_map_without_chunk_text(tmp_path, monke
 
     assert manifest["remote_rows"] == {"chunk_1": 42}
     assert manifest["representations"] == {"chunk_1": "developer"}
+    assert manifest["document_ids"] == {"chunk_1": "document_1"}
     assert manifest["policy_fingerprint"] == "policy-test"
     assert index.remote_rows() == {"chunk_1": 42}
+    assert index.document_ids() == {"chunk_1": "document_1"}
     assert "secret chunk text" not in json.dumps(manifest)
 
 

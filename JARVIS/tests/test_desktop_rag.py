@@ -57,6 +57,46 @@ def test_selected_file_is_filtered_before_vector_candidate_cutoff(monkeypatch, t
     assert all(row["relative_path"] == "selected.md" for row in results)
 
 
+def test_cloud_selected_file_is_filtered_before_vector_candidate_cutoff(monkeypatch, tmp_path: Path) -> None:
+    database, project_id = seed_scope_database(tmp_path)
+
+    class FakeVectorIndex:
+        def __init__(self, *_args: object) -> None: pass
+        def count(self) -> int: return 2
+        def search(self, _query: str, top_k: int) -> list[tuple[str, float]]:
+            assert top_k == 2
+            return [("chunk_b", 0.99), ("chunk_a", 0.10)]
+        def remote_rows(self) -> dict[str, int]: return {"chunk_b": 2, "chunk_a": 3}
+        def representations(self) -> dict[str, str]: return {"chunk_b": "classic", "chunk_a": "classic"}
+        def document_ids(self) -> dict[str, str]: return {"chunk_b": "doc_b", "chunk_a": "doc_a"}
+
+    class FakeCloudStore:
+        def status(self) -> dict[str, bool]: return {"connected": True}
+        def fetch_chunks(self, _project_id: str, chunk_ids: list[str], _row_map: dict[str, int]) -> list[dict]:
+            assert chunk_ids == ["chunk_a"]
+            return [{
+                "id": "chunk_a", "document_id": "doc_a", "relative_path": "selected.md",
+                "representation": "classic", "text": "Evidence from selected.md",
+                "page": None, "heading": None, "sheet": None, "cell_range": None,
+                "line_start": 1, "line_end": 1,
+            }]
+
+    monkeypatch.setattr("jarvis.retrieval.VectorIndex", FakeVectorIndex)
+    retriever = DynamicRetriever(make_config(tmp_path), database)
+    retriever.chunk_store = FakeCloudStore()
+    results = retriever.search(
+        "semantic only query",
+        user_id="owner",
+        project_id=project_id,
+        source_selector="selected.md",
+        top_k=1,
+        candidate_k=1,
+        rerank=False,
+    )
+
+    assert [row["id"] for row in results] == ["chunk_a"]
+
+
 class FakeRetriever:
     def __init__(self, rows: list[dict]) -> None:
         self.rows = rows

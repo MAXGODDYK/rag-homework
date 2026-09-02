@@ -78,6 +78,7 @@ class VectorIndex:
         *,
         remote_rows: dict[str, int] | None = None,
         representations: dict[str, str] | None = None,
+        document_ids: dict[str, str] | None = None,
         policy_fingerprint: str | None = None,
     ) -> None:
         if len(chunk_ids) != len(texts):
@@ -97,6 +98,7 @@ class VectorIndex:
                         "chunk_ids": [],
                         "remote_rows": remote_rows or {},
                         "representations": representations or {},
+                        "document_ids": document_ids or {},
                         "policy_fingerprint": policy_fingerprint or "legacy",
                     },
                     ensure_ascii=False,
@@ -155,6 +157,9 @@ class VectorIndex:
             # The map has IDs and Google Sheet row numbers only, never chunk text.
             "remote_rows": remote_rows or {},
             "representations": representations or {},
+            # This text-free map lets cloud retrieval enforce a selected-file
+            # scope before the global vector candidate cutoff.
+            "document_ids": document_ids or {},
             "policy_fingerprint": policy_fingerprint or "legacy",
         }
         (self.root / "manifest.json").write_text(
@@ -176,6 +181,15 @@ class VectorIndex:
             return
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["representations"] = representations
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def set_document_ids(self, document_ids: dict[str, str]) -> None:
+        """Attach the text-free chunk-to-document scope map."""
+        manifest_path = self.root / "manifest.json"
+        if not manifest_path.exists():
+            return
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["document_ids"] = document_ids
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def set_policy_fingerprint(self, policy_fingerprint: str) -> None:
@@ -205,6 +219,18 @@ class VectorIndex:
             return {}
         try:
             return {str(key): str(value) for key, value in json.loads(manifest_path.read_text(encoding="utf-8")).get("representations", {}).items()}
+        except (OSError, ValueError, json.JSONDecodeError):
+            return {}
+
+    def document_ids(self) -> dict[str, str]:
+        manifest_path = self.root / "manifest.json"
+        if not manifest_path.exists():
+            return {}
+        try:
+            return {
+                str(key): str(value)
+                for key, value in json.loads(manifest_path.read_text(encoding="utf-8")).get("document_ids", {}).items()
+            }
         except (OSError, ValueError, json.JSONDecodeError):
             return {}
 

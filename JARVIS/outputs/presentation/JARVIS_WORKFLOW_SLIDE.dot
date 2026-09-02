@@ -1,0 +1,38 @@
+digraph JARVIS_SLIDE {
+  graph [rankdir=TB, bgcolor="#FFFFFF", pad="0.28", nodesep="0.30", ranksep="0.72", splines=ortho, fontname="Arial"];
+  node [shape=box, style="rounded,filled", fillcolor="#F5F7FA", color="#AAB3BE", fontname="Arial", fontsize=15, margin="0.17,0.11"];
+  edge [color="#75808D", penwidth=1.3, arrowsize=0.72];
+
+  start [label="ПИТАННЯ", fillcolor="#DCEEFF", color="#3D8DFF", penwidth=2];
+  scan [label="1 · SCAN\n.gitignore + guards"];
+  delta [shape=diamond, label="FILE\nCHANGED?", fillcolor="#FFF3D6"];
+  chunk [label="CHUNKING\nClassic / Developer / Mixed"];
+  sheets [label="SHEETS DB\nCurrent + History", fillcolor="#E6F4EA", color="#34A853"];
+  cache [label="TEXT-FREE CACHE\nFAISS + ID maps"];
+  scope [label="2 · EARLY SCOPE\neligible document IDs", fillcolor="#EEE8FF", color="#7C5CE5", penwidth=2];
+  representation [shape=diamond, label="CODE\nQUESTION?", fillcolor="#FFF3D6"];
+
+  vector [label="3 · FAISS\nsemantic IDs"];
+  filter [label="MAP FILTER\nbefore top-k", fillcolor="#FFF0DE", color="#F59E0B", penwidth=2];
+  fetch [label="SHEETS BATCH\nonly candidates"];
+  lexical [label="BM25 + GRAPH\nlexical / cross-file"];
+  rerank [label="BGE\nreranking"];
+  gate [shape=diamond, label="ENOUGH\nEVIDENCE?", fillcolor="#FFF3D6"];
+  qwen [label="4 · LOCAL QWEN3\ngrounded context"];
+  validate [label="JSON + CITATIONS\nvalidation / repair"];
+  answer [label="GROUNDED ANSWER\nfile · page · cell · line", fillcolor="#E9F7EF", color="#34A853", penwidth=2];
+  fallback [label="HONEST FALLBACK\nwithout invention", fillcolor="#FDE8E8", color="#D9485F", penwidth=2];
+
+  { rank=same; start; scan; delta; chunk; sheets; cache; scope; representation; }
+  { rank=same; vector; filter; fetch; lexical; rerank; gate; qwen; validate; answer; }
+
+  start -> scan -> delta;
+  delta -> chunk [label="  yes"];
+  delta -> cache [label="no", constraint=false];
+  chunk -> sheets -> cache -> scope -> representation;
+  representation -> vector [label="classic / developer"];
+  vector -> filter -> fetch -> lexical -> rerank -> gate;
+  gate -> qwen [label="yes"];
+  gate -> fallback [label="no"];
+  qwen -> validate -> answer;
+}

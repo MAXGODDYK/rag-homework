@@ -14,5 +14,6 @@
   external integrations свідомо прибрані; використовується лише графічний
   доступ з локального ПК.
 
-Фінальне технічне доопрацювання описано у
-[FINAL_IMPROVEMENT.md](FINAL_IMPROVEMENT.md).
+Фінальне технічне доопрацювання, workflow, презентація та текст захисту
+знаходяться у каталозі [`JARVIS`](JARVIS/README.md). Основний changelog:
+[`JARVIS/FINAL_IMPROVEMENT.md`](JARVIS/FINAL_IMPROVEMENT.md).

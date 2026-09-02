@@ -212,10 +212,25 @@ class DynamicRetriever:
             vector = VectorIndex(self._project_root(user_id, project_id) / "index", self.embedding_model)
             row_maps[str(project_id)] = vector.remote_rows()
             variants = vector.representations()
-            for chunk_id, _score in vector.search(question, max(100, candidate_k * 5)):
-                if variants.get(chunk_id, "classic") == representation and chunk_id not in seen:
+            chunk_documents = vector.document_ids()
+            if len(chunk_documents) != vector.count():
+                raise GoogleSheetsError("The local vector cache needs a metadata rebuild")
+            eligible_for_project = {
+                document_id
+                for document_id, document in eligible.items()
+                if document.get("project_id") == project_id
+            }
+            eligible_limit = max(100, candidate_k * 5)
+            for chunk_id, _score in vector.search(question, vector.count()):
+                if (
+                    chunk_documents.get(chunk_id) in eligible_for_project
+                    and variants.get(chunk_id, "classic") == representation
+                    and chunk_id not in seen
+                ):
                     seen.add(chunk_id)
                     ranked_ids.append(chunk_id)
+                    if len(ranked_ids) >= eligible_limit:
+                        break
         if not ranked_ids:
             return []
         chunks: list[dict] = []
