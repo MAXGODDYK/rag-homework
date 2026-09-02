@@ -20,7 +20,12 @@ EXTENSION_LANGUAGE = {
     ".go": "go",
     ".rs": "rust",
     ".c": "c",
-    ".h": "c",
+    # Project headers are parsed as C++ because JARVIS primarily indexes
+    # repository code and C++ headers commonly contain classes, namespaces and
+    # framework macros (for example Unreal's UCLASS/GENERATED_BODY). Feeding
+    # those headers to the C grammar can corrupt the native tree-sitter parser
+    # state instead of returning an ordinary parse error.
+    ".h": "cpp",
     ".cc": "cpp",
     ".cpp": "cpp",
     ".hpp": "cpp",
@@ -54,6 +59,13 @@ SYMBOL_TYPES = {
     "enum_item": "enum",
 }
 
+# tree-sitter-language-pack 1.16.1 can terminate the Python process with an
+# access violation while walking macro-heavy Unreal C++ translation units.
+# A native crash cannot be caught, so use the deterministic regex analyzer for
+# C++ until that parser is safe for these files. Retrieval still indexes the
+# complete source text; only optional symbol enrichment uses this fallback.
+UNSAFE_NATIVE_PARSER_LANGUAGES = frozenset({"cpp"})
+
 IMPORT_PATTERNS = [
     re.compile(r"^\s*(?:from\s+([\w.]+)\s+)?import\s+([\w.*]+)", re.MULTILINE),
     re.compile(r"^\s*import\s+(?:[^'\"]+\s+from\s+)?['\"]([^'\"]+)['\"]", re.MULTILINE),
@@ -78,7 +90,7 @@ def _node_name(node, source: bytes) -> str | None:
 def analyze_code(path: Path, text: str) -> tuple[list[SymbolRecord], list[GraphEdgeRecord]]:
     language = language_for_path(path)
     symbols: list[SymbolRecord] = []
-    if language:
+    if language and language not in UNSAFE_NATIVE_PARSER_LANGUAGES:
         try:
             from tree_sitter_language_pack import get_parser
 
@@ -107,10 +119,19 @@ def analyze_code(path: Path, text: str) -> tuple[list[SymbolRecord], list[GraphE
             symbols = []
 
     if not symbols:
-        fallback = re.compile(
-            r"^\s*(?:class|interface|struct|enum|def|function|func|fn)\s+([A-Za-z_$][\w$]*)",
-            re.MULTILINE,
-        )
+        if language == "cpp":
+            # Account for `enum class` and Unreal-style export macros such as
+            # `class MYPROJECT_API AGameplayCharacterBase`.
+            expression = (
+                r"^\s*(?:class|struct|enum(?:\s+class)?)\s+"
+                r"(?:(?:[A-Za-z_]\w*_API)\s+)?([A-Za-z_]\w*)"
+            )
+        else:
+            expression = (
+                r"^\s*(?:class|interface|struct|enum|def|function|func|fn)\s+"
+                r"([A-Za-z_$][\w$]*)"
+            )
+        fallback = re.compile(expression, re.MULTILINE)
         lines = text.splitlines()
         for match in fallback.finditer(text):
             line = text.count("\n", 0, match.start()) + 1

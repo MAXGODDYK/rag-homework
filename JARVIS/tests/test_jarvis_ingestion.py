@@ -12,7 +12,7 @@ from pptx import Presentation
 
 from jarvis.ingestion.archives import ArchiveSafetyError, extract_archive
 from jarvis.ingestion.parsers import DocumentParseError, parse_document
-from jarvis.ingestion.repository import analyze_code
+from jarvis.ingestion.repository import analyze_code, language_for_path
 from jarvis.ingestion.service import IngestionService
 from jarvis.ingestion.vector_index import VectorIndex
 from jarvis.retrieval import DynamicRetriever
@@ -77,6 +77,46 @@ def test_repository_fallback_extracts_symbols_and_imports(tmp_path: Path) -> Non
     names = {symbol.name for symbol in symbols}
     assert {"Service", "run"}.issubset(names)
     assert any(edge.target_ref == "json" for edge in edges)
+
+
+def test_cpp_header_uses_cpp_parser_and_keeps_symbol_values_stable(tmp_path: Path) -> None:
+    path = tmp_path / "GameplayCharacterBase.h"
+    path.write_text(
+        """
+#pragma once
+#include "CoreMinimal.h"
+
+UCLASS()
+class MYPROJECT_API AGameplayCharacterBase : public ACharacter
+{
+    GENERATED_BODY()
+public:
+    void SetSprintActive(bool bActive);
+};
+""".strip(),
+        encoding="utf-8",
+    )
+
+    assert language_for_path(path) == "cpp"
+    symbols, edges = analyze_code(path, path.read_text(encoding="utf-8"))
+
+    # Access every persisted field after analyze_code has released its parser
+    # tree. This guards the desktop sync path that inserts these values into
+    # SQLite and previously crashed for Unreal Engine headers.
+    persisted = [
+        (
+            symbol.name,
+            symbol.kind,
+            symbol.qualified_name,
+            symbol.line_start,
+            symbol.line_end,
+            json.dumps(symbol.metadata, ensure_ascii=False),
+        )
+        for symbol in symbols
+    ]
+    assert persisted
+    assert persisted[0][0] == "AGameplayCharacterBase"
+    assert any(edge.target_ref == "CoreMinimal.h" for edge in edges)
 
 
 @pytest.mark.parametrize(
